@@ -1,6 +1,6 @@
 # pycancensus
 
-**:siren: this repo was vibecoded and is extremely likely to have bugs :siren:**
+** :warning: this repo was vibecoded and is extremely likely to have bugs :warning: **
 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
