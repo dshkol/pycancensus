@@ -25,7 +25,7 @@ pip install pycancensus
 Or for development:
 
 ```bash
-git clone https://github.com/mountainMath/pycancensus.git
+git clone https://github.com/dshkol/pycancensus.git
 cd pycancensus
 pip install -e .[dev]
 ```
