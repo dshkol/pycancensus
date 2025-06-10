@@ -208,10 +208,23 @@ def _process_csv_response(csv_text, vectors, labels):
     numeric_columns = []
     
     # Standard census columns that should be numeric
+    # Note: API may return column names with trailing spaces, so we need flexible matching
     standard_numeric = ['Population', 'Households', 'Dwellings', 'Area (sq km)']
-    for col in standard_numeric:
-        if col in df.columns:
-            numeric_columns.append(col)
+    
+    # Create a mapping of actual column names to expected names for flexible matching
+    column_mapping = {}
+    for expected_col in standard_numeric:
+        # Check for exact match first
+        if expected_col in df.columns:
+            numeric_columns.append(expected_col)
+            continue
+            
+        # Check for variations with trailing/leading spaces
+        for actual_col in df.columns:
+            if actual_col.strip() == expected_col:
+                numeric_columns.append(actual_col)
+                column_mapping[actual_col] = expected_col
+                break
     
     # Vector columns (v_* pattern)
     for col in df.columns:
@@ -226,9 +239,17 @@ def _process_csv_response(csv_text, vectors, labels):
     
     # Convert categorical columns to pandas categorical (matching R factors)
     categorical_columns = ['Type', 'Region Name']
-    for col in categorical_columns:
-        if col in df.columns:
-            df[col] = df[col].astype('category')
+    for expected_col in categorical_columns:
+        # Check for exact match first
+        if expected_col in df.columns:
+            df[expected_col] = df[expected_col].astype('category')
+            continue
+            
+        # Check for variations with trailing/leading spaces
+        for actual_col in df.columns:
+            if actual_col.strip() == expected_col:
+                df[actual_col] = df[actual_col].astype('category')
+                break
     
     # TODO: Add label processing based on labels parameter
     # TODO: Add vector name mapping

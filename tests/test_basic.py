@@ -208,6 +208,45 @@ class TestMockedAPI:
         assert "v_CA16_2" in vectors["vector"].values
 
 
+class TestDataProcessing:
+    """Test data processing functionality."""
+    
+    def test_column_name_handling_with_spaces(self):
+        """Test that column names with trailing spaces are handled correctly."""
+        from pycancensus.core import _process_csv_response
+        
+        # Mock CSV data with trailing spaces in column names (as returned by API)
+        csv_data = """GeoUID,Type,Region Name,Population ,Households ,Dwellings ,Area (sq km),v_CA16_1
+5915001,CSD,Test Region,12345,5000,5200,100.5,12345
+5915002,CSD,Another Region,67890,25000,26000,200.8,67890"""
+        
+        # Process the CSV
+        result_df = _process_csv_response(csv_data, ['v_CA16_1'], 'detailed')
+        
+        # Check that columns with trailing spaces are converted to numeric
+        assert 'Population ' in result_df.columns
+        assert pd.api.types.is_numeric_dtype(result_df['Population '])
+        assert result_df['Population '].iloc[0] == 12345
+        
+        assert 'Households ' in result_df.columns  
+        assert pd.api.types.is_numeric_dtype(result_df['Households '])
+        
+        assert 'Dwellings ' in result_df.columns
+        assert pd.api.types.is_numeric_dtype(result_df['Dwellings '])
+        
+        # Check that Area column (no trailing space) still works
+        assert 'Area (sq km)' in result_df.columns
+        assert pd.api.types.is_numeric_dtype(result_df['Area (sq km)'])
+        
+        # Check that vector columns are converted to numeric
+        assert 'v_CA16_1' in result_df.columns
+        assert pd.api.types.is_numeric_dtype(result_df['v_CA16_1'])
+        
+        # Check that categorical columns are properly set
+        assert result_df['Type'].dtype.name == 'category'
+        assert result_df['Region Name'].dtype.name == 'category'
+
+
 class TestCache:
     """Test caching functionality."""
     
