@@ -138,35 +138,107 @@ def get_census(
     if vectors:
         request_data["vectors"] = json.dumps(vectors)
     
-    # Determine endpoint based on geometry request
-    if geo_format == "geopandas":
-        endpoint = "geo.geojson"
-        if resolution == "high":
-            request_data["resolution"] = "high"
-    else:
-        endpoint = "data.csv"
-    
     try:
         if not quiet:
             print(f"Querying CensusMapper API...")
             
-        # Use multipart/form-data like the R package
-        # Convert all values to tuple format for multipart encoding
-        multipart_data = {}
-        for key, value in request_data.items():
-            multipart_data[key] = (None, value)
-        
-        response = requests.post(f"{base_url}{endpoint}", files=multipart_data, timeout=30)
-        response.raise_for_status()
-        
-        # Process the response data based on endpoint
-        if geo_format == "geopandas":
-            # geo.geojson returns JSON
-            data = response.json()
-            result = _process_geojson_response(data, vectors, labels)
+        # Handle geo_format='geopandas' with vectors using hybrid approach
+        if geo_format == "geopandas" and vectors:
+            # The geo.geojson endpoint doesn't properly return vector data
+            # So we need to fetch geometry and data separately, then merge
+            
+            # 1. Fetch geometry data
+            geo_request_data = request_data.copy()
+            if "vectors" in geo_request_data:
+                del geo_request_data["vectors"]  # Remove vectors for geo request
+            if resolution == "high":
+                geo_request_data["resolution"] = "high"
+                
+            geo_multipart_data = {}
+            for key, value in geo_request_data.items():
+                geo_multipart_data[key] = (None, value)
+            
+            geo_response = requests.post(f"{base_url}geo.geojson", files=geo_multipart_data, timeout=30)
+            geo_response.raise_for_status()
+            geo_data = geo_response.json()
+            geo_result = _process_geojson_response(geo_data, None, labels)  # No vectors
+            
+            # 2. Fetch vector data using CSV endpoint
+            csv_multipart_data = {}
+            for key, value in request_data.items():
+                csv_multipart_data[key] = (None, value)
+                
+            csv_response = requests.post(f"{base_url}data.csv", files=csv_multipart_data, timeout=30)
+            csv_response.raise_for_status()
+            csv_result = _process_csv_response(csv_response.text, vectors, labels)
+            
+            # 3. Merge the results
+            # Use a common identifier to merge - typically 'GeoUID' from CSV and 'id' from GeoJSON
+            merge_key_csv = None
+            merge_key_geo = None
+            
+            # Find the appropriate merge keys
+            for potential_key in ['GeoUID', 'id', 'rgid']:
+                if potential_key in csv_result.columns:
+                    merge_key_csv = potential_key
+                    break
+            
+            for potential_key in ['id', 'rgid', 'GeoUID']:
+                if potential_key in geo_result.columns:
+                    merge_key_geo = potential_key
+                    break
+                    
+            if merge_key_csv and merge_key_geo:
+                # Merge on the identifier
+                # Keep all columns from geo_result, add vector columns from csv_result
+                vector_columns = [col for col in csv_result.columns if col.startswith('v_')]
+                merge_columns = [merge_key_csv] + vector_columns
+                
+                result = geo_result.merge(
+                    csv_result[merge_columns], 
+                    left_on=merge_key_geo, 
+                    right_on=merge_key_csv, 
+                    how='left'
+                )
+                
+                # Drop the duplicate merge key if it was added
+                if merge_key_csv != merge_key_geo and merge_key_csv in result.columns:
+                    result = result.drop(columns=[merge_key_csv])
+                    
+            else:
+                # Fallback: assume same order and merge by index
+                vector_columns = [col for col in csv_result.columns if col.startswith('v_')]
+                for col in vector_columns:
+                    if len(csv_result) == len(geo_result):
+                        geo_result[col] = csv_result[col].values
+                result = geo_result
+                
         else:
-            # data.csv returns CSV
-            result = _process_csv_response(response.text, vectors, labels)
+            # Standard single-endpoint approach
+            if geo_format == "geopandas":
+                endpoint = "geo.geojson"
+                if resolution == "high":
+                    request_data["resolution"] = "high"
+            else:
+                endpoint = "data.csv"
+            
+            # Use multipart/form-data like the R package
+            # Convert all values to tuple format for multipart encoding
+            multipart_data = {}
+            for key, value in request_data.items():
+                multipart_data[key] = (None, value)
+            
+            response = requests.post(f"{base_url}{endpoint}", files=multipart_data, timeout=30)
+            response.raise_for_status()
+            
+            # Process the response data based on endpoint
+            if geo_format == "geopandas":
+                # geo.geojson returns JSON
+                data = response.json()
+                result = _process_geojson_response(data, vectors, labels)
+            else:
+                # data.csv returns CSV
+                result = _process_csv_response(response.text, vectors, labels)
             
         # Cache the result
         if use_cache:
@@ -276,6 +348,60 @@ def _process_geojson_response(data, vectors, labels):
         raise ValueError("Invalid GeoJSON response: missing 'features' field")
     
     gdf = gpd.GeoDataFrame.from_features(data["features"])
+    
+    # Apply the same numeric conversion logic as CSV processing
+    # This was missing and causing all columns to remain as strings
+    
+    # Define census-specific NA values (matching R package)
+    census_na_values = ['x', 'X', 'F', '...', '-', '']
+    
+    # Convert specific columns to numeric (matching R package exactly)
+    numeric_columns = []
+    
+    # Standard census columns that should be numeric
+    # Note: API may return column names with trailing spaces, so we need flexible matching
+    standard_numeric = ['Population', 'Households', 'Dwellings', 'Area (sq km)', 'pop', 'dw', 'hh', 'a']
+    
+    # Create a mapping of actual column names to expected names for flexible matching
+    column_mapping = {}
+    for expected_col in standard_numeric:
+        # Check for exact match first
+        if expected_col in gdf.columns:
+            numeric_columns.append(expected_col)
+            continue
+            
+        # Check for variations with trailing/leading spaces
+        for actual_col in gdf.columns:
+            if actual_col.strip() == expected_col:
+                numeric_columns.append(actual_col)
+                column_mapping[actual_col] = expected_col
+                break
+    
+    # Vector columns (v_* pattern) - handle both short and descriptive names
+    for col in gdf.columns:
+        if col.startswith('v_CA') or col.startswith('v_'):
+            numeric_columns.append(col)
+    
+    # Convert to numeric with census NA handling
+    for col in numeric_columns:
+        if col in gdf.columns:  # Additional safety check
+            # Replace census NA values with NaN, then convert to numeric
+            gdf[col] = gdf[col].replace(census_na_values, pd.NA)
+            gdf[col] = pd.to_numeric(gdf[col], errors='coerce')
+    
+    # Convert categorical columns to pandas categorical (matching R factors)
+    categorical_columns = ['Type', 'Region Name', 'name', 't']
+    for expected_col in categorical_columns:
+        # Check for exact match first
+        if expected_col in gdf.columns:
+            gdf[expected_col] = gdf[expected_col].astype('category')
+            continue
+            
+        # Check for variations with trailing/leading spaces
+        for actual_col in gdf.columns:
+            if actual_col.strip() == expected_col:
+                gdf[actual_col] = gdf[actual_col].astype('category')
+                break
     
     # TODO: Add label processing based on labels parameter
     # TODO: Add vector name mapping
