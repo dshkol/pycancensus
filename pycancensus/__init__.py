@@ -15,7 +15,7 @@ from .vectors import list_census_vectors, search_census_vectors
 from .datasets import list_census_datasets
 from .settings import set_api_key, get_api_key, set_cache_path, get_cache_path, remove_api_key, show_api_key
 from .geometry import get_census_geometry
-from .cache import list_cache, remove_from_cache
+from .cache import list_cache, remove_from_cache, clear_cache
 
 __all__ = [
     "get_census",
@@ -33,4 +33,5 @@ __all__ = [
     "get_census_geometry",
     "list_cache",
     "remove_from_cache",
+    "clear_cache",
 ]

@@ -226,9 +226,9 @@ def _process_csv_response(csv_text, vectors, labels):
                 column_mapping[actual_col] = expected_col
                 break
     
-    # Vector columns (v_* pattern)
+    # Vector columns (v_* pattern) - handle both short and descriptive names
     for col in df.columns:
-        if col.startswith('v_'):
+        if col.startswith('v_CA') or col.startswith('v_'):
             numeric_columns.append(col)
     
     # Convert to numeric with census NA handling
