@@ -198,8 +198,37 @@ def _process_csv_response(csv_text, vectors, labels):
     """Process CSV API response into a pandas DataFrame."""
     import io
     
-    # Read CSV from string
-    df = pd.read_csv(io.StringIO(csv_text))
+    # Read all columns as strings initially (like R package)
+    df = pd.read_csv(io.StringIO(csv_text), dtype=str, encoding='utf-8')
+    
+    # Define census-specific NA values (matching R package)
+    census_na_values = ['x', 'X', 'F', '...', '-', '']
+    
+    # Convert specific columns to numeric (matching R package exactly)
+    numeric_columns = []
+    
+    # Standard census columns that should be numeric
+    standard_numeric = ['Population', 'Households', 'Dwellings', 'Area (sq km)']
+    for col in standard_numeric:
+        if col in df.columns:
+            numeric_columns.append(col)
+    
+    # Vector columns (v_* pattern)
+    for col in df.columns:
+        if col.startswith('v_'):
+            numeric_columns.append(col)
+    
+    # Convert to numeric with census NA handling
+    for col in numeric_columns:
+        # Replace census NA values with NaN, then convert to numeric
+        df[col] = df[col].replace(census_na_values, pd.NA)
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    # Convert categorical columns to pandas categorical (matching R factors)
+    categorical_columns = ['Type', 'Region Name']
+    for col in categorical_columns:
+        if col in df.columns:
+            df[col] = df[col].astype('category')
     
     # TODO: Add label processing based on labels parameter
     # TODO: Add vector name mapping
