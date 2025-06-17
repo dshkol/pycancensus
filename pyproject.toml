@@ -2,10 +2,112 @@
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "pycancensus"
+version = "0.1.0"
+description = "Access, retrieve, and work with Canadian Census data and geography"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Dmitry Shkolnik", email = "shkolnikd@gmail.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "requests>=2.25.0",
+    "pandas>=1.0.0",
+    "geopandas>=0.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "sphinx",
+    "sphinx-rtd-theme",
+]
+cross-validation = [
+    "rpy2>=3.4.0",
+    "tqdm>=4.62.0",
+    "deepdiff>=5.6.0",
+    "tabulate>=0.8.9",
+    "matplotlib>=3.4.0",
+    "seaborn>=0.11.0",
+]
+
+[project.scripts]
+pycancensus = "pycancensus.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/mountainMath/pycancensus"
+Repository = "https://github.com/mountainMath/pycancensus"
+Documentation = "https://github.com/mountainMath/pycancensus"
+"Bug Tracker" = "https://github.com/mountainMath/pycancensus/issues"
+
+[tool.setuptools]
+packages = ["pycancensus"]
+
+[tool.setuptools.package-data]
+pycancensus = ["*.json", "*.yaml"]
+
+# Exclude test directories from package builds
+[tool.setuptools.exclude-package-data]
+"*" = ["tests", "tests.*", "test", "test.*", "testing", "testing.*"]
+
 [tool.black]
 line-length = 88
 target-version = ['py37']
+extend-exclude = '''
+/(
+    tests/cross_validation
+    | \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+)/
+'''
 
 [tool.isort]
 profile = "black"
 multi_line_output = 3
+extend_skip_glob = ["tests/cross_validation/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Exclude cross-validation tests from normal test runs
+addopts = "--ignore=tests/cross_validation"
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["pycancensus"]
+omit = [
+    "tests/*",
+    "test_*",
+    "*/tests/*",
+    "*/test_*",
+    "setup.py",
+    "*/site-packages/*",
+]

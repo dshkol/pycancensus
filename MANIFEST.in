@@ -1,0 +1,62 @@
+# MANIFEST.in - Controls what gets included in source distributions
+# This is Python's equivalent to R's .Rbuildignore
+
+# Include documentation and essential files
+include README.md
+include LICENSE
+include requirements.txt
+include requirements-dev.txt
+
+# Include package data
+recursive-include pycancensus *.py
+recursive-include pycancensus *.json
+recursive-include pycancensus *.yaml
+
+# Include examples (but not test notebooks)
+recursive-include examples *.py
+include examples/getting_started.ipynb
+include examples/basic_usage.py
+
+# Exclude all test directories from source distributions
+prune tests
+prune test
+prune testing
+
+# Exclude development and debugging files
+exclude debug_*.py
+exclude debug_*.R
+exclude notebook_debug.py
+exclude test_demographic_workflow.py
+
+# Exclude build artifacts
+prune build
+prune dist
+prune *.egg-info
+prune __pycache__
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude .DS_Store
+global-exclude *.so
+
+# Exclude version control and CI files
+exclude .gitignore
+exclude .github
+prune .github
+
+# Exclude IDE and editor files
+exclude .vscode
+exclude .idea
+prune .vscode
+prune .idea
+global-exclude *.swp
+global-exclude *.swo
+global-exclude *~
+
+# Exclude cross-validation and analysis files
+exclude tests/cross_validation
+prune tests/cross_validation
+
+# Exclude Jupyter notebook checkpoints
+prune .ipynb_checkpoints
+global-exclude .ipynb_checkpoints
