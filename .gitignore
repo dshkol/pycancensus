@@ -141,3 +141,17 @@ Thumbs.db
 # Data cache
 cache/
 .cancensus_cache/
+
+# Cross-validation test results (development only, not distributed)
+tests/cross_validation/results/*.json
+tests/cross_validation/results/*.csv
+tests/cross_validation/results/*.log
+tests/cross_validation/temp/
+tests/cross_validation/.temp/
+
+# R temporary files (from cross-validation testing)
+.Rhistory
+.RData
+.Ruserdata
+*.rdb
+*.rdx
