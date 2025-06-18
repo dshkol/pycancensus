@@ -46,8 +46,11 @@ Access, retrieve, and work with Canadian Census data and geography.
 
 ## Installation
 
+**Note**: pycancensus is not yet published on PyPI. Install directly from GitHub:
+
 ```bash
-pip install pycancensus
+# Install latest version from GitHub
+pip install git+https://github.com/dshkol/pycancensus.git
 ```
 
 Or for development:
@@ -57,6 +60,8 @@ git clone https://github.com/dshkol/pycancensus.git
 cd pycancensus
 pip install -e .[dev]
 ```
+
+**Coming soon**: Publication to PyPI for `pip install pycancensus`
 
 ## API Key
 
