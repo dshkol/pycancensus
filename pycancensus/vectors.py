@@ -70,34 +70,59 @@ def list_census_vectors(
                 print("Reading vectors from cache...")
             return cached_data
     
-    # Query API
+    # Query API using the correct endpoint (discovered via diagnostics)
     base_url = "https://censusmapper.ca/api/v1"
     params = {
         "dataset": dataset,
-        "api_key": api_key,
-        "format": "json"
+        "api_key": api_key
     }
     
     try:
         if not quiet:
-            print(f"Querying CensusMapper API for {dataset} vectors...")
+            print(f"🔍 Querying CensusMapper API for {dataset} vectors...")
             
-        response = requests.get(f"{base_url}/list_vectors", params=params, timeout=30)
+        # Use the working CSV endpoint instead of the non-working JSON endpoint
+        response = requests.get(f"{base_url}/vector_info.csv", params=params, timeout=30)
         response.raise_for_status()
         
-        data = response.json()
+        # Parse CSV response
+        import io
+        df = pd.read_csv(io.StringIO(response.text))
         
-        if "vectors" not in data:
-            raise ValueError("Invalid API response: missing 'vectors' field")
-            
-        df = pd.DataFrame(data["vectors"])
+        # Rename columns to match expected format
+        column_mapping = {
+            'vector': 'vector',
+            'label': 'label', 
+            'type': 'type',
+            'units': 'units',
+            'add': 'aggregation',
+            'parent': 'parent_vector',
+            'details': 'details'
+        }
+        
+        # Apply column mapping if columns exist
+        for old_col, new_col in column_mapping.items():
+            if old_col in df.columns and old_col != new_col:
+                df = df.rename(columns={old_col: new_col})
+        
+        # Ensure required columns exist
+        required_columns = ['vector', 'label', 'type']
+        for col in required_columns:
+            if col not in df.columns:
+                raise ValueError(f"Missing required column: {col}")
+        
+        # Convert parent_vector column to handle empty strings as None
+        if 'parent_vector' in df.columns:
+            df['parent_vector'] = df['parent_vector'].replace(['', 'NA'], None)
         
         # Cache the result
         if use_cache:
             cache_data(cache_key, df)
             
         if not quiet:
-            print(f"Retrieved {len(df)} vectors")
+            print(f"✅ Retrieved {len(df)} vectors for {dataset}")
+            if len(df) > 1000:
+                print(f"📊 Large dataset: {len(df)} variables available")
             
         return df
         

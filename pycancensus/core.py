@@ -12,6 +12,7 @@ import warnings
 from .settings import get_api_key, get_cache_path
 from .cache import get_cached_data, cache_data
 from .utils import validate_dataset, validate_level, process_regions
+from .progress import show_request_preview, create_progress_for_request
 
 
 def get_census(
@@ -101,6 +102,10 @@ def get_census(
     # Process regions
     processed_regions = process_regions(regions)
     
+    # Show request preview for large downloads
+    if not quiet:
+        show_request_preview(processed_regions, vectors, level, dataset, geo_format, quiet=False)
+    
     # Check cache first
     if use_cache:
         cache_key = _generate_cache_key(dataset, processed_regions, vectors, level, geo_format)
@@ -138,9 +143,17 @@ def get_census(
     if vectors:
         request_data["vectors"] = json.dumps(vectors)
     
+    # Create progress indicator for large requests
+    progress = create_progress_for_request(processed_regions, vectors or [], level, geo_format)
+    
     try:
-        if not quiet:
-            print(f"Querying CensusMapper API...")
+        if not quiet and not progress:
+            print(f"🔄 Querying CensusMapper API for {len(processed_regions)} region(s)...")
+            if vectors:
+                print(f"📊 Retrieving {len(vectors)} variable(s) at {level} level...")
+        
+        if progress:
+            progress.start()
             
         # Handle geo_format='geopandas' with vectors using hybrid approach
         if geo_format == "geopandas" and vectors:
@@ -243,9 +256,18 @@ def get_census(
         # Cache the result
         if use_cache:
             cache_data(cache_key, result)
-            
-        if not quiet:
-            print(f"Retrieved data for {len(result)} regions")
+        
+        # Finish progress indicator
+        if progress:
+            vector_count = len([col for col in result.columns if col.startswith('v_')])
+            if vectors and vector_count > 0:
+                progress.finish(f"Retrieved {len(result)} regions with {vector_count} variables")
+            else:
+                progress.finish(f"Retrieved {len(result)} regions")
+        elif not quiet:
+            print(f"✅ Successfully retrieved data for {len(result)} regions")
+            if vectors:
+                print(f"📈 Data includes {len([col for col in result.columns if col.startswith('v_')])} vector columns")
             
         return result
         
@@ -272,6 +294,9 @@ def _process_csv_response(csv_text, vectors, labels):
     
     # Read all columns as strings initially (like R package)
     df = pd.read_csv(io.StringIO(csv_text), dtype=str, encoding='utf-8')
+    
+    # Fix column names by removing trailing/leading spaces (critical fix for API compatibility)
+    df.columns = df.columns.str.strip()
     
     # Define census-specific NA values (matching R package)
     census_na_values = ['x', 'X', 'F', '...', '-', '']
