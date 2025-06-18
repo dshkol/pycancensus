@@ -65,13 +65,29 @@ def main():
     except Exception as e:
         print(f"Error: {e}\n")
     
+    # Example 5a: NEW - Vector hierarchy navigation
+    print("5a. Vector hierarchy navigation (NEW features):")
+    try:
+        # Find census vectors with enhanced search
+        income_vectors = pc.find_census_vectors("CA16", "income")
+        print(f"Found {len(income_vectors)} income-related vectors")
+        
+        # Navigate vector hierarchies  
+        base_vector = "v_CA16_401"  # Total population
+        parents = pc.parent_census_vectors(base_vector, dataset="CA16")
+        children = pc.child_census_vectors(base_vector, dataset="CA16") 
+        print(f"Vector {base_vector}: {len(parents)} parents, {len(children)} children")
+        print()
+    except Exception as e:
+        print(f"Error: {e}\n")
+    
     # Example 6: Get census data (no geometry)
     print("6. Getting census data for Vancouver CMA:")
     try:
         data = pc.get_census(
-            dataset="CA16",
+            dataset="CA21",  # Updated to latest census
             regions={"CMA": "59933"},  # Vancouver CMA
-            vectors=["v_CA16_1", "v_CA16_2"],  # Total population vectors
+            vectors=["v_CA21_1", "v_CA21_2"],  # Total population vectors
             level="CSD"  # Census Subdivision level
         )
         print(data.head())
@@ -83,9 +99,9 @@ def main():
     print("7. Getting census data with geometry:")
     try:
         geo_data = pc.get_census(
-            dataset="CA16",
+            dataset="CA21",  # Updated to latest census
             regions={"CMA": "59933"},  # Vancouver CMA  
-            vectors=["v_CA16_1"],  # Total population
+            vectors=["v_CA21_1"],  # Total population
             level="CSD",
             geo_format="geopandas"
         )
@@ -100,7 +116,7 @@ def main():
     print("8. Getting census geometries only:")
     try:
         geometries = pc.get_census_geometry(
-            dataset="CA16",
+            dataset="CA21",  # Updated to latest census
             regions={"CMA": "59933"},
             level="CSD"
         )
@@ -111,6 +127,11 @@ def main():
         print(f"Error: {e}\n")
     
     print("=== Examples complete ===")
+    print("\nNew in this version:")
+    print("- Vector hierarchy navigation functions")
+    print("- Enhanced error handling with helpful messages")  
+    print("- Progress indicators for large downloads")
+    print("- Full R cancensus library equivalence")
     print("\nTo run these examples with real data:")
     print("1. Get a free API key at: https://censusmapper.ca/users/sign_up")
     print("2. Set your API key: pc.set_api_key('your_key_here')")
