@@ -16,12 +16,12 @@ from .settings import get_cache_path
 def get_cached_data(cache_key: str) -> Optional[Any]:
     """
     Retrieve data from cache if it exists.
-    
+
     Parameters
     ----------
     cache_key : str
         Unique identifier for the cached data.
-        
+
     Returns
     -------
     Any or None
@@ -29,7 +29,7 @@ def get_cached_data(cache_key: str) -> Optional[Any]:
     """
     cache_path = Path(get_cache_path())
     cache_file = cache_path / f"{cache_key}.pkl"
-    
+
     if cache_file.exists():
         try:
             with open(cache_file, "rb") as f:
@@ -37,14 +37,14 @@ def get_cached_data(cache_key: str) -> Optional[Any]:
         except Exception:
             # If cache file is corrupted, remove it
             cache_file.unlink(missing_ok=True)
-            
+
     return None
 
 
 def cache_data(cache_key: str, data: Any) -> None:
     """
     Cache data to disk.
-    
+
     Parameters
     ----------
     cache_key : str
@@ -54,9 +54,9 @@ def cache_data(cache_key: str, data: Any) -> None:
     """
     cache_path = Path(get_cache_path())
     cache_path.mkdir(parents=True, exist_ok=True)
-    
+
     cache_file = cache_path / f"{cache_key}.pkl"
-    
+
     try:
         with open(cache_file, "wb") as f:
             pickle.dump(data, f)
@@ -67,7 +67,7 @@ def cache_data(cache_key: str, data: Any) -> None:
 def list_cache() -> pd.DataFrame:
     """
     List all cached data files.
-    
+
     Returns
     -------
     pd.DataFrame
@@ -77,7 +77,7 @@ def list_cache() -> pd.DataFrame:
         - size_mb: File size in MB
         - created: Creation timestamp
         - modified: Last modification timestamp
-        
+
     Examples
     --------
     >>> import pycancensus as pc
@@ -85,33 +85,38 @@ def list_cache() -> pd.DataFrame:
     >>> print(cache_list)
     """
     cache_path = Path(get_cache_path())
-    
+
     if not cache_path.exists():
-        return pd.DataFrame(columns=["cache_key", "file_path", "size_mb", "created", "modified"])
-    
+        return pd.DataFrame(
+            columns=["cache_key", "file_path", "size_mb", "created", "modified"]
+        )
+
     cache_files = []
-    
+
     for cache_file in cache_path.glob("*.pkl"):
         try:
             stat = cache_file.stat()
-            cache_files.append({
-                "cache_key": cache_file.stem,
-                "file_path": str(cache_file),
-                "size_mb": round(stat.st_size / (1024 * 1024), 2),
-                "created": pd.Timestamp.fromtimestamp(stat.st_ctime),
-                "modified": pd.Timestamp.fromtimestamp(stat.st_mtime),
-            })
+            cache_files.append(
+                {
+                    "cache_key": cache_file.stem,
+                    "file_path": str(cache_file),
+                    "size_mb": round(stat.st_size / (1024 * 1024), 2),
+                    "created": pd.Timestamp.fromtimestamp(stat.st_ctime),
+                    "modified": pd.Timestamp.fromtimestamp(stat.st_mtime),
+                }
+            )
         except Exception:
             continue
-    
+
     return pd.DataFrame(cache_files)
 
 
-def remove_from_cache(cache_keys: Optional[List[str]] = None, 
-                      all_cache: bool = False) -> None:
+def remove_from_cache(
+    cache_keys: Optional[List[str]] = None, all_cache: bool = False
+) -> None:
     """
     Remove items from cache.
-    
+
     Parameters
     ----------
     cache_keys : list of str, optional
@@ -119,24 +124,24 @@ def remove_from_cache(cache_keys: Optional[List[str]] = None,
         does nothing.
     all_cache : bool, default False
         If True, removes all cached data.
-        
+
     Examples
     --------
     >>> import pycancensus as pc
     >>> # Remove specific cache entries
     >>> pc.remove_from_cache(["regions_CA16", "vectors_CA16"])
-    >>> 
+    >>>
     >>> # Remove all cache (use with caution!)
     >>> pc.remove_from_cache(all_cache=True)
     """
     cache_path = Path(get_cache_path())
-    
+
     if not cache_path.exists():
         print("No cache directory found.")
         return
-    
+
     removed_count = 0
-    
+
     if all_cache:
         # Remove all .pkl files
         for cache_file in cache_path.glob("*.pkl"):
@@ -145,9 +150,9 @@ def remove_from_cache(cache_keys: Optional[List[str]] = None,
                 removed_count += 1
             except Exception as e:
                 print(f"Warning: Failed to remove {cache_file}: {e}")
-        
+
         print(f"Removed {removed_count} cached files.")
-        
+
     elif cache_keys:
         # Remove specific cache keys
         for cache_key in cache_keys:
@@ -161,7 +166,7 @@ def remove_from_cache(cache_keys: Optional[List[str]] = None,
                     print(f"Warning: Failed to remove {cache_key}: {e}")
             else:
                 print(f"Cache key not found: {cache_key}")
-        
+
         if removed_count > 0:
             print(f"Removed {removed_count} cached files.")
     else:
@@ -171,9 +176,9 @@ def remove_from_cache(cache_keys: Optional[List[str]] = None,
 def clear_cache() -> None:
     """
     Clear all cached data.
-    
+
     This is an alias for remove_from_cache(all_cache=True).
-    
+
     Examples
     --------
     >>> import pycancensus as pc

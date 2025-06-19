@@ -19,7 +19,7 @@ def get_census_geometry(
 ) -> gpd.GeoDataFrame:
     """
     Get census boundary geometries from the CensusMapper API.
-    
+
     Parameters
     ----------
     dataset : str
@@ -36,12 +36,12 @@ def get_census_geometry(
         Whether to suppress messages and warnings.
     api_key : str, optional
         API key for CensusMapper API.
-        
+
     Returns
     -------
     gpd.GeoDataFrame
         GeoDataFrame containing census boundary geometries.
-        
+
     Examples
     --------
     >>> import pycancensus as pc
@@ -63,5 +63,5 @@ def get_census_geometry(
         resolution=resolution,
         use_cache=use_cache,
         quiet=quiet,
-        api_key=api_key
+        api_key=api_key,
     )
