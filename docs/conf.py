@@ -17,9 +17,16 @@ release = '0.1.0'
 # Check if we're building on Read the Docs
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
-# Import autodoc mock for packages that might not be available on RTD
+# Configure for RTD environment
 if on_rtd:
+    # Mock imports for packages that might cause issues on RTD
     autodoc_mock_imports = []
+    
+    # Set environment variables for better RTD compatibility
+    os.environ['MPLBACKEND'] = 'Agg'  # Use non-interactive backend
+    
+    # Disable problematic extensions on RTD if needed
+    print("Building on Read the Docs - using RTD-optimized configuration")
 
 # -- General configuration ---------------------------------------------------
 extensions = [

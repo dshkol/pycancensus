@@ -9,11 +9,9 @@ build:
   os: ubuntu-24.04
   tools:
     python: "3.13"
-  jobs:
-    post_checkout:
-      # GDAL is required for geopandas
-      - sudo apt-get update
-      - sudo apt-get install -y gdal-bin libgdal-dev
+  apt_packages:
+    - gdal-bin
+    - libgdal-dev
 
 # Build documentation in the "docs/" directory with Sphinx
 sphinx:
