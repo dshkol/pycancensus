@@ -1,0 +1,28 @@
+# Documentation requirements for Read the Docs
+# This ensures consistent builds on RTD
+
+# Core dependencies (from pyproject.toml)
+requests>=2.25.0
+pandas>=1.0.0
+geopandas>=0.8.0
+
+# Documentation dependencies
+sphinx>=4.0
+sphinx-rtd-theme
+myst-nb>=0.17
+sphinx-gallery>=0.11
+sphinx-autosummary-accessors
+sphinx-copybutton
+matplotlib>=3.4.0
+folium>=0.12.0
+
+# Additional dependencies for MyST-NB
+linkify-it-py
+jupyter-cache>=0.5
+nbclient
+pyyaml
+
+# Required for geopandas on RTD
+pyogrio>=0.7.2
+pyproj>=3.3.0
+shapely>=2.0.0

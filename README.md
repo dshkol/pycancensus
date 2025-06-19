@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![Documentation Status](https://readthedocs.org/projects/pycancensus/badge/?version=latest)](https://pycancensus.readthedocs.io/en/latest/?badge=latest)
 [![Tests](https://img.shields.io/badge/tests-passing-green.svg)](tests/)
 [![R Equivalence](https://img.shields.io/badge/R%20equivalence-verified-blue.svg)](tests/cross_validation/)
 

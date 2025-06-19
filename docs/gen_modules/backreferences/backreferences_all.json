@@ -1,0 +1,106 @@
+{
+ "pycancensus.child_census_vectors": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ]
+ ],
+ "pycancensus.find_census_vectors": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ]
+ ],
+ "pycancensus.get_census": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ],
+  [
+   "plot_geographic_analysis.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to work with geographic census data, including creating maps and performing spatial analysis.",
+   "Geographic Analysis with Census Data"
+  ]
+ ],
+ "pycancensus.get_census_geometry": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ]
+ ],
+ "pycancensus.list_census_datasets": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ]
+ ],
+ "pycancensus.list_census_regions": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ],
+  [
+   "plot_geographic_analysis.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to work with geographic census data, including creating maps and performing spatial analysis.",
+   "Geographic Analysis with Census Data"
+  ]
+ ],
+ "pycancensus.list_census_vectors": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ]
+ ],
+ "pycancensus.parent_census_vectors": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ]
+ ],
+ "pycancensus.search_census_regions": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ]
+ ],
+ "pycancensus.search_census_vectors": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ]
+ ]
+}

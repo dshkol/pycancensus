@@ -38,8 +38,16 @@ dev = [
     "pytest-cov",
     "black",
     "flake8",
-    "sphinx",
+]
+docs = [
+    "sphinx>=4.0",
     "sphinx-rtd-theme",
+    "myst-nb>=0.17",
+    "sphinx-gallery>=0.11",
+    "sphinx-autosummary-accessors",
+    "sphinx-copybutton",
+    "matplotlib>=3.4.0",
+    "folium>=0.12.0",
 ]
 cross-validation = [
     "rpy2>=3.4.0",
@@ -54,10 +62,10 @@ cross-validation = [
 pycancensus = "pycancensus.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/mountainMath/pycancensus"
-Repository = "https://github.com/mountainMath/pycancensus"
-Documentation = "https://github.com/mountainMath/pycancensus"
-"Bug Tracker" = "https://github.com/mountainMath/pycancensus/issues"
+Homepage = "https://github.com/dshkol/pycancensus"
+Repository = "https://github.com/dshkol/pycancensus"
+Documentation = "https://pycancensus.readthedocs.io"
+"Bug Tracker" = "https://github.com/dshkol/pycancensus/issues"
 
 [tool.setuptools]
 packages = ["pycancensus"]

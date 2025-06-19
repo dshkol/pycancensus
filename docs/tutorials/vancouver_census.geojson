@@ -1,0 +1,16 @@
+{
+"type": "FeatureCollection",
+"name": "vancouver_census",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "GeoUID": "5993300", "name": "Vancouver", "v_CA21_1": 171958, "v_CA21_434": 87191, "area_km2": 9.9999999999999995e-07, "pop_density": 171958000000.0 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 0.0, 0.0 ], [ 1.0, 0.0 ], [ 1.0, 1.0 ], [ 0.0, 1.0 ], [ 0.0, 0.0 ] ] ] } },
+{ "type": "Feature", "properties": { "GeoUID": "5993301", "name": "Surrey", "v_CA21_1": 181932, "v_CA21_434": 84131, "area_km2": 9.9999999999999995e-07, "pop_density": 181932000000.0 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 1.0, 1.0 ], [ 2.0, 1.0 ], [ 2.0, 2.0 ], [ 1.0, 2.0 ], [ 1.0, 1.0 ] ] ] } },
+{ "type": "Feature", "properties": { "GeoUID": "5993302", "name": "Burnaby", "v_CA21_1": 415838, "v_CA21_434": 56023, "area_km2": 9.9999999999999995e-07, "pop_density": 415838000000.0 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 2.0, 2.0 ], [ 3.0, 2.0 ], [ 3.0, 3.0 ], [ 2.0, 3.0 ], [ 2.0, 2.0 ] ] ] } },
+{ "type": "Feature", "properties": { "GeoUID": "5993303", "name": "Richmond", "v_CA21_1": 309178, "v_CA21_434": 81090, "area_km2": 9.9999999999999995e-07, "pop_density": 309178000000.0 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 3.0, 3.0 ], [ 4.0, 3.0 ], [ 4.0, 4.0 ], [ 3.0, 4.0 ], [ 3.0, 3.0 ] ] ] } },
+{ "type": "Feature", "properties": { "GeoUID": "5993304", "name": "Coquitlam", "v_CA21_1": 160268, "v_CA21_434": 41685, "area_km2": 9.9999999999999995e-07, "pop_density": 160268000000.0 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 4.0, 4.0 ], [ 5.0, 4.0 ], [ 5.0, 5.0 ], [ 4.0, 5.0 ], [ 4.0, 4.0 ] ] ] } },
+{ "type": "Feature", "properties": { "GeoUID": "5993305", "name": "Langley", "v_CA21_1": 104886, "v_CA21_434": 40769, "area_km2": 9.9999999999999995e-07, "pop_density": 104886000000.0 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 5.0, 5.0 ], [ 6.0, 5.0 ], [ 6.0, 6.0 ], [ 5.0, 6.0 ], [ 5.0, 5.0 ] ] ] } },
+{ "type": "Feature", "properties": { "GeoUID": "5993306", "name": "North Vancouver", "v_CA21_1": 187337, "v_CA21_434": 99735, "area_km2": 9.9999999999999995e-07, "pop_density": 187337000000.0 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 6.0, 6.0 ], [ 7.0, 6.0 ], [ 7.0, 7.0 ], [ 6.0, 7.0 ], [ 6.0, 6.0 ] ] ] } },
+{ "type": "Feature", "properties": { "GeoUID": "5993307", "name": "West Vancouver", "v_CA21_1": 571430, "v_CA21_434": 96101, "area_km2": 9.9999999999999995e-07, "pop_density": 571430000000.0 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 7.0, 7.0 ], [ 8.0, 7.0 ], [ 8.0, 8.0 ], [ 7.0, 8.0 ], [ 7.0, 7.0 ] ] ] } },
+{ "type": "Feature", "properties": { "GeoUID": "5993308", "name": "New Westminster", "v_CA21_1": 137498, "v_CA21_434": 42433, "area_km2": 9.9999999999999995e-07, "pop_density": 137498000000.0 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 8.0, 8.0 ], [ 9.0, 8.0 ], [ 9.0, 9.0 ], [ 8.0, 9.0 ], [ 8.0, 8.0 ] ] ] } }
+]
+}
