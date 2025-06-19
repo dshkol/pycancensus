@@ -74,15 +74,19 @@ Unlike previous versions with limited hierarchy examples, pycancensus now provid
 
 ```{code-cell} python
 try:
-    # Find the age total vector (this is our ROOT)
-    age_total = vectors_ca21[vectors_ca21['label'] == 'Total - Age'].iloc[0]
-    print(f"🌳 Age Demographics Hierarchy\n")
-    print(f"📊 ROOT: {age_total['vector']} - {age_total['label']}")
-    print(f"\n📊 LEVEL 1 - Major Age Groups:")
+    # Find household income vector (this is our ROOT with real hierarchy)
+    income_root = "v_CA21_923"  # Household total income groups in 2020
     
-    # Get its direct children (major age groups)
-    age_children = child_census_vectors(age_total['vector'], 'CA21')
-    display(age_children[['vector', 'label', 'parent_vector']])
+    # Get the vector details for context
+    income_info = vectors_ca21[vectors_ca21['vector'] == income_root]
+    if not income_info.empty:
+        print(f"🌳 Household Income Hierarchy\n")
+        print(f"📊 ROOT: {income_root} - {income_info['label'].iloc[0][:50]}...")
+        print(f"\n📊 LEVEL 1 - Income Brackets:")
+    
+    # Get its direct children (income brackets)
+    income_children = child_census_vectors(income_root, 'CA21')
+    display(income_children[['vector', 'label', 'parent_vector']].head(8))  # Show first 8 brackets
     
 except Exception as e:
     print(f"Error exploring hierarchy: {e}")
@@ -92,15 +96,18 @@ except Exception as e:
 
 ```{code-cell} python
 try:
-    # Drill down into 0-14 age group
-    child_ages = child_census_vectors('v_CA21_11', 'CA21')
-    print(f"📊 LEVEL 2 - Detailed breakdown of '0 to 14 years' (v_CA21_11):")
-    display(child_ages[['vector', 'label', 'parent_vector']])
+    # Drill down into the high-income bracket (shows grandparent -> parent -> child)
+    high_income_bracket = "v_CA21_939"  # $100,000 and over
+    print(f"📊 LEVEL 2 - High-income sub-categories for '{high_income_bracket}':")
     
-    # Even more detailed: individual years
-    detailed_ages = child_census_vectors('v_CA21_14', 'CA21')
-    print(f"📊 LEVEL 3 - Individual years for '0 to 4 years' (v_CA21_14):")
-    display(detailed_ages[['vector', 'label', 'parent_vector']])
+    # Get the children of the $100,000+ bracket
+    high_income_subcats = child_census_vectors(high_income_bracket, 'CA21')
+    display(high_income_subcats[['vector', 'label', 'parent_vector']])
+    
+    # Show the parent relationship for context
+    parent_info = parent_census_vectors(high_income_bracket, 'CA21')
+    if not parent_info.empty:
+        print(f"\n⬆️  Parent of this bracket: {parent_info['vector'].iloc[0]} - {parent_info['label'].iloc[0][:50]}...")
     
 except Exception as e:
     print(f"Error exploring detailed hierarchy: {e}")
@@ -112,9 +119,10 @@ You can also navigate **upward** in the hierarchy:
 
 ```{code-cell} python
 try:
-    # Find parent of a specific vector
-    parent = parent_census_vectors('v_CA21_17', 'CA21')  # Under 1 year
-    print(f"⬆️  Finding parent of 'Under 1 year' (v_CA21_17):")
+    # Find parent of a specific income bracket
+    income_bracket = "v_CA21_942"  # $150,000 to $199,999
+    parent = parent_census_vectors(income_bracket, 'CA21')
+    print(f"⬆️  Finding parent of income bracket '{income_bracket}':")
     display(parent[['vector', 'label', 'parent_vector']])
     
 except Exception as e:
@@ -143,26 +151,26 @@ Finally, let's get actual census data using our hierarchy vectors:
 
 ```{code-cell} python
 try:
-    # Get real data for Toronto CMA using our hierarchy vectors
+    # Get real data for Toronto CMA using our income hierarchy vectors
     toronto_data = get_census(
         dataset='CA21',
         regions={'cma': '535'},  # Toronto CMA
-        vectors=['v_CA21_8', 'v_CA21_11', 'v_CA21_68', 'v_CA21_251'],
+        vectors=['v_CA21_923', 'v_CA21_939', 'v_CA21_942', 'v_CA21_943'],  # Income categories
         level='cma',
         use_cache=False
     )
     
-    print(f"📈 Toronto CMA Age Demographics:")
-    print(f"\nAge Distribution:")
-    total_pop = toronto_data['v_CA21_8'].iloc[0]
-    age_0_14 = toronto_data['v_CA21_11'].iloc[0]
-    age_15_64 = toronto_data['v_CA21_68'].iloc[0] 
-    age_65_plus = toronto_data['v_CA21_251'].iloc[0]
+    print(f"📈 Toronto CMA Income Demographics:")
+    print(f"\nHousehold Income Distribution:")
+    total_households = toronto_data['v_CA21_923'].iloc[0]
+    high_income = toronto_data['v_CA21_939'].iloc[0]  # $100,000+
+    very_high_1 = toronto_data['v_CA21_942'].iloc[0]  # $150,000-$199,999
+    very_high_2 = toronto_data['v_CA21_943'].iloc[0]  # $200,000+
     
-    print(f"• 0-14 years: {age_0_14:,} ({age_0_14/total_pop*100:.1f}%)")
-    print(f"• 15-64 years: {age_15_64:,} ({age_15_64/total_pop*100:.1f}%)")
-    print(f"• 65+ years: {age_65_plus:,} ({age_65_plus/total_pop*100:.1f}%)")
-    print(f"• TOTAL: {total_pop:,}")
+    print(f"• Total households: {total_households:,}")
+    print(f"• $100,000+ income: {high_income:,} ({high_income/total_households*100:.1f}%)")
+    print(f"  - $150,000-$199,999: {very_high_1:,} ({very_high_1/total_households*100:.1f}%)")
+    print(f"  - $200,000+: {very_high_2:,} ({very_high_2/total_households*100:.1f}%)")
     
 except Exception as e:
     print(f"Error retrieving data: {e}")
@@ -174,7 +182,7 @@ except Exception as e:
 ✅ **This tutorial demonstrates the enhanced pycancensus capabilities:**
 
 1. **list_census_vectors()** - Browse 7,709+ available variables with explicit parent-child relationships
-2. **Hierarchy Navigation** - Navigate through age demographics from broad categories to individual years
+2. **Hierarchy Navigation** - Navigate through income hierarchies from main categories to detailed brackets
 3. **parent_census_vectors()** & **child_census_vectors()** - Navigate up and down the hierarchy
 4. **find_census_vectors()** - Smart search with relevance scoring 
 5. **Real Data** - Actual census data retrieved and analyzed
