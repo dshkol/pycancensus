@@ -25,6 +25,15 @@ if on_rtd:
     # Set environment variables for better RTD compatibility
     os.environ['MPLBACKEND'] = 'Agg'  # Use non-interactive backend
     
+    # Set up API key for RTD builds if available
+    api_key = os.environ.get('CANCENSUS_API_KEY')
+    if api_key:
+        # Set up API key for examples to use
+        os.environ['PYCANCENSUS_API_KEY'] = api_key
+        print("API key configured for RTD build")
+    else:
+        print("No API key found - examples will use mock data")
+    
     # Disable problematic extensions on RTD if needed
     print("Building on Read the Docs - using RTD-optimized configuration")
 

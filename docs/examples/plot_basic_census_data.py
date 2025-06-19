@@ -17,12 +17,14 @@ import pycancensus as pc
 import pandas as pd
 
 # Set your API key (you'll need to replace this with your actual key)
-# For demonstration, we'll handle the case where no key is set
-try:
-    # pc.set_api_key("your_api_key_here")  # Uncomment and add your key
-    print("API key setup - replace 'your_api_key_here' with your actual key")
-except:
-    print("No API key set - some examples may not work")
+import os
+api_key = os.environ.get('CANCENSUS_API_KEY')
+if api_key:
+    pc.set_api_key(api_key)
+    print("API key configured")
+else:
+    print("No API key - examples will show code structure")
+    print("Get your API key at: https://censusmapper.ca/users/sign_up")
 
 # %%
 # Exploring Available Datasets
