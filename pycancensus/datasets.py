@@ -134,3 +134,84 @@ def get_dataset_attribution(dataset: str) -> str:
         )
 
     return attribution
+
+
+def dataset_attribution(datasets):
+    """
+    Get combined attribution text for multiple datasets.
+    
+    This function combines attribution text for multiple datasets, merging
+    similar attributions that only differ by year.
+    
+    Parameters
+    ----------
+    datasets : list of str
+        List of dataset identifiers (e.g., ['CA06', 'CA16']).
+        
+    Returns
+    -------
+    list of str
+        List of attribution strings, with similar attributions merged.
+        
+    Examples
+    --------
+    >>> import pycancensus as pc
+    >>> # Get attribution for multiple census years
+    >>> attributions = pc.dataset_attribution(['CA06', 'CA16'])
+    >>> for attr in attributions:
+    ...     print(attr)
+    """
+    import re
+    
+    # Get all datasets info
+    datasets_df = list_census_datasets(quiet=True)
+    
+    # Filter for requested datasets
+    datasets = [d.upper() for d in datasets]
+    dataset_rows = datasets_df[datasets_df["dataset"].isin(datasets)]
+    
+    if len(dataset_rows) == 0:
+        raise ValueError(f"No valid datasets found in {datasets}")
+    
+    # Get attribution texts
+    attributions = dataset_rows["attribution"].tolist()
+    
+    # Group similar attributions that differ only by year
+    # Create a mapping of pattern to actual attributions
+    pattern_map = {}
+    
+    for attr in attributions:
+        # Replace 4-digit years with placeholder to create pattern
+        pattern = re.sub(r'\d{4}', '{{YEAR}}', attr)
+        
+        if pattern not in pattern_map:
+            pattern_map[pattern] = []
+        pattern_map[pattern].append(attr)
+    
+    # For each pattern, merge the years
+    result = []
+    for pattern, attr_list in pattern_map.items():
+        if len(attr_list) == 1:
+            # Only one attribution with this pattern
+            result.append(attr_list[0])
+        else:
+            # Multiple attributions with same pattern - merge years
+            # Extract all years from the attributions
+            all_years = []
+            for attr in attr_list:
+                years = re.findall(r'\d{4}', attr)
+                all_years.extend(years)
+            
+            # Remove duplicates and sort
+            unique_years = sorted(list(set(all_years)))
+            
+            # Replace {{YEAR}} placeholder with merged years
+            if len(unique_years) > 0:
+                year_string = ', '.join(unique_years)
+                merged = pattern.replace('{{YEAR}}', year_string)
+                result.append(merged)
+            else:
+                # No years found, just use first attribution
+                result.append(attr_list[0])
+    
+    return result

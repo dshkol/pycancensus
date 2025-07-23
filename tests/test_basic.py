@@ -185,14 +185,13 @@ class TestMockedAPI:
     @patch('pycancensus.vectors.requests.get')
     def test_list_vectors(self, mock_get):
         """Test listing vectors with mocked API."""
-        # Mock API response
+        # Mock CSV response (new format)
+        csv_response = """vector,label,type,units,add,parent,details
+v_CA16_1,Total population,Total,Number,additive,,Total population for region
+v_CA16_2,Total population Male,Male,Number,additive,v_CA16_1,Male population for region"""
+        
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "vectors": [
-                {"vector": "v_CA16_1", "label": "Total population", "type": "Total"},
-                {"vector": "v_CA16_2", "label": "Total population, Male", "type": "Male"}
-            ]
-        }
+        mock_response.text = csv_response
         mock_response.raise_for_status.return_value = None
         mock_get.return_value = mock_response
         
@@ -223,16 +222,16 @@ class TestDataProcessing:
         # Process the CSV
         result_df = _process_csv_response(csv_data, ['v_CA16_1'], 'detailed')
         
-        # Check that columns with trailing spaces are converted to numeric
-        assert 'Population ' in result_df.columns
-        assert pd.api.types.is_numeric_dtype(result_df['Population '])
-        assert result_df['Population '].iloc[0] == 12345
+        # Check that columns with trailing spaces are trimmed and converted to numeric
+        assert 'Population' in result_df.columns  # Trimmed, no trailing space
+        assert pd.api.types.is_numeric_dtype(result_df['Population'])
+        assert result_df['Population'].iloc[0] == 12345
         
-        assert 'Households ' in result_df.columns  
-        assert pd.api.types.is_numeric_dtype(result_df['Households '])
+        assert 'Households' in result_df.columns  # Trimmed, no trailing space
+        assert pd.api.types.is_numeric_dtype(result_df['Households'])
         
-        assert 'Dwellings ' in result_df.columns
-        assert pd.api.types.is_numeric_dtype(result_df['Dwellings '])
+        assert 'Dwellings' in result_df.columns  # Trimmed, no trailing space
+        assert pd.api.types.is_numeric_dtype(result_df['Dwellings'])
         
         # Check that Area column (no trailing space) still works
         assert 'Area (sq km)' in result_df.columns

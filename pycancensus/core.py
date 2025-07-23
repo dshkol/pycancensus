@@ -310,6 +310,59 @@ def _generate_cache_key(dataset, regions, vectors, level, geo_format):
     return hashlib.md5(params_str.encode()).hexdigest()
 
 
+def _extract_vector_metadata(df, vectors, labels):
+    """Extract vector metadata from column names and store as attribute."""
+    if not vectors:
+        return df
+    
+    # Find vector columns - they have format "v_DATASET_NUM: Description"
+    vector_cols = [col for col in df.columns if col.startswith("v_")]
+    
+    if not vector_cols:
+        return df
+    
+    # Build metadata DataFrame
+    metadata_rows = []
+    rename_dict = {}
+    
+    for col in vector_cols:
+        if ": " in col:
+            # Column has format "v_CA21_1: Total - Population"
+            parts = col.split(": ", 1)
+            vector_code = parts[0]
+            detail = parts[1] if len(parts) > 1 else ""
+            
+            metadata_rows.append({
+                "Vector": vector_code,
+                "Detail": detail
+            })
+            
+            # For short labels, rename column to just the vector code
+            if labels == "short":
+                rename_dict[col] = vector_code
+        else:
+            # Column is already just the vector code
+            vector_code = col
+            # Try to get detail from vector list if available
+            metadata_rows.append({
+                "Vector": vector_code,
+                "Detail": ""
+            })
+    
+    # Create metadata DataFrame
+    if metadata_rows:
+        metadata_df = pd.DataFrame(metadata_rows)
+        
+        # Rename columns if using short labels
+        if rename_dict:
+            df = df.rename(columns=rename_dict)
+        
+        # Store metadata as attribute (always store, but mainly useful with short labels)
+        df.attrs['census_vectors'] = metadata_df
+    
+    return df
+
+
 def _process_csv_response(csv_text, vectors, labels):
     """Process CSV API response into a pandas DataFrame."""
     import io
@@ -370,8 +423,8 @@ def _process_csv_response(csv_text, vectors, labels):
                 df[actual_col] = df[actual_col].astype("category")
                 break
 
-    # TODO: Add label processing based on labels parameter
-    # TODO: Add vector name mapping
+    # Extract vector metadata and handle labels
+    df = _extract_vector_metadata(df, vectors, labels)
 
     return df
 
@@ -383,8 +436,8 @@ def _process_json_response(data, vectors, labels):
 
     df = pd.DataFrame(data["data"])
 
-    # TODO: Add label processing based on labels parameter
-    # TODO: Add vector name mapping
+    # Extract vector metadata and handle labels
+    df = _extract_vector_metadata(df, vectors, labels)
 
     return df
 
@@ -459,7 +512,7 @@ def _process_geojson_response(data, vectors, labels):
                 gdf[actual_col] = gdf[actual_col].astype("category")
                 break
 
-    # TODO: Add label processing based on labels parameter
-    # TODO: Add vector name mapping
+    # Extract vector metadata and handle labels
+    gdf = _extract_vector_metadata(gdf, vectors, labels)
 
     return gdf
