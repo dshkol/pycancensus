@@ -175,116 +175,113 @@ class ComprehensiveCrossValidator:
 def test_dataset_functions():
     """Test dataset-related functions."""
     validator = ComprehensiveCrossValidator()
-    
-    results = []
-    
+
     # Test list_census_datasets
-    results.append(validator.run_r_python_comparison(
+    result1 = validator.run_r_python_comparison(
         "List Census Datasets",
         "result <- list_census_datasets(quiet=TRUE)",
         lambda: pc.list_census_datasets(quiet=True)
-    ))
-    
-    # Test dataset_attribution 
-    results.append(validator.run_r_python_comparison(
+    )
+    assert result1['comparison'] == '✅ Equivalent data' or not R_AVAILABLE
+
+    # Test dataset_attribution
+    result2 = validator.run_r_python_comparison(
         "Dataset Attribution - Single",
         "result <- data.frame(attribution=dataset_attribution('CA21'))",
         lambda: pd.DataFrame({"attribution": pc.dataset_attribution(['CA21'])})
-    ))
-    
+    )
+    assert result2['comparison'] == '✅ Equivalent data' or not R_AVAILABLE
+
     # Test dataset_attribution with multiple datasets
-    results.append(validator.run_r_python_comparison(
-        "Dataset Attribution - Multiple", 
+    result3 = validator.run_r_python_comparison(
+        "Dataset Attribution - Multiple",
         "result <- data.frame(attribution=dataset_attribution(c('CA16', 'CA21')))",
         lambda: pd.DataFrame({"attribution": pc.dataset_attribution(['CA16', 'CA21'])})
-    ))
-    
-    return results
+    )
+    assert result3['comparison'] == '✅ Equivalent data' or not R_AVAILABLE
 
 
 def test_vector_functions():
     """Test vector-related functions."""
     validator = ComprehensiveCrossValidator()
-    
-    results = []
-    
+
     # Test list_census_vectors
-    results.append(validator.run_r_python_comparison(
+    result1 = validator.run_r_python_comparison(
         "List Census Vectors",
         "result <- list_census_vectors('CA21', quiet=TRUE)",
         lambda: pc.list_census_vectors('CA21', quiet=True)
-    ))
-    
+    )
+    # Just verify Python succeeded - R comparison optional
+    assert 'python_result' in result1
+
     # Test search_census_vectors
-    results.append(validator.run_r_python_comparison(
+    result2 = validator.run_r_python_comparison(
         "Search Census Vectors",
         "result <- search_census_vectors('population', 'CA21', quiet=TRUE)",
         lambda: pc.search_census_vectors('population', 'CA21', quiet=True)
-    ))
-    
+    )
+    assert 'python_result' in result2
+
     # Test parent_census_vectors
-    results.append(validator.run_r_python_comparison(
+    result3 = validator.run_r_python_comparison(
         "Parent Census Vectors",
         "result <- parent_census_vectors('v_CA21_1', dataset='CA21')",
         lambda: pc.parent_census_vectors('v_CA21_1', dataset='CA21')
-    ))
-    
+    )
+    assert 'python_result' in result3
+
     # Test child_census_vectors
-    results.append(validator.run_r_python_comparison(
+    result4 = validator.run_r_python_comparison(
         "Child Census Vectors",
         "result <- child_census_vectors('v_CA21_1', dataset='CA21')",
         lambda: pc.child_census_vectors('v_CA21_1', dataset='CA21')
-    ))
-    
-    return results
+    )
+    assert 'python_result' in result4
 
 
 def test_region_functions():
     """Test region-related functions."""
     validator = ComprehensiveCrossValidator()
-    
-    results = []
-    
+
     # Test list_census_regions
-    results.append(validator.run_r_python_comparison(
+    result1 = validator.run_r_python_comparison(
         "List Census Regions - Provinces",
         "result <- list_census_regions('CA21', quiet=TRUE)",
         lambda: pc.list_census_regions('CA21', quiet=True)
-    ))
-    
+    )
+    assert 'python_result' in result1
+
     # Test search_census_regions
-    results.append(validator.run_r_python_comparison(
+    result2 = validator.run_r_python_comparison(
         "Search Census Regions",
         "result <- search_census_regions('Toronto', 'CA21', level='CMA', quiet=TRUE)",
         lambda: pc.search_census_regions('Toronto', 'CA21', level='CMA', quiet=True)
-    ))
-    
-    return results
+    )
+    assert 'python_result' in result2
 
 
 def test_census_data_retrieval():
     """Test main census data retrieval functions."""
     validator = ComprehensiveCrossValidator()
-    
-    results = []
-    
+
     # Test basic get_census
-    results.append(validator.run_r_python_comparison(
+    result1 = validator.run_r_python_comparison(
         "Get Census - Basic",
-        """result <- get_census(dataset='CA21', 
-                             regions=list(PR='35'), 
-                             vectors='v_CA21_1', 
+        """result <- get_census(dataset='CA21',
+                             regions=list(PR='35'),
+                             vectors='v_CA21_1',
                              level='PR',
                              quiet=TRUE)""",
-        lambda: pc.get_census(dataset='CA21', 
-                             regions={'PR': '35'}, 
-                             vectors=['v_CA21_1'], 
+        lambda: pc.get_census(dataset='CA21',
+                             regions={'PR': '35'},
+                             vectors=['v_CA21_1'],
                              level='PR',
                              quiet=True)
-    ))
-    
+    )
+    assert 'python_result' in result1
+
     # Test multiple vectors
-    results.append(validator.run_r_python_comparison(
+    result2 = validator.run_r_python_comparison(
         "Get Census - Multiple Vectors",
         """result <- get_census(dataset='CA21',
                              regions=list(PR='35'),
@@ -296,11 +293,12 @@ def test_census_data_retrieval():
                              vectors=['v_CA21_1', 'v_CA21_2'],
                              level='PR',
                              quiet=True)
-    ))
-    
+    )
+    assert 'python_result' in result2
+
     # Test multiple regions
-    results.append(validator.run_r_python_comparison(
-        "Get Census - Multiple Regions", 
+    result3 = validator.run_r_python_comparison(
+        "Get Census - Multiple Regions",
         """result <- get_census(dataset='CA21',
                              regions=list(PR=c('35', '24')),
                              vectors='v_CA21_1',
@@ -311,10 +309,11 @@ def test_census_data_retrieval():
                              vectors=['v_CA21_1'],
                              level='PR',
                              quiet=True)
-    ))
-    
+    )
+    assert 'python_result' in result3
+
     # Test CSD level data (more complex)
-    results.append(validator.run_r_python_comparison(
+    result4 = validator.run_r_python_comparison(
         "Get Census - CSD Level",
         """result <- get_census(dataset='CA21',
                              regions=list(CMA='35535'),
@@ -326,32 +325,29 @@ def test_census_data_retrieval():
                              vectors=['v_CA21_1'],
                              level='CSD',
                              quiet=True)
-    ))
-    
-    return results
+    )
+    assert 'python_result' in result4
 
 
 def test_edge_cases():
     """Test edge cases and error handling."""
     validator = ComprehensiveCrossValidator()
-    
-    results = []
-    
+
     # Test with non-existent vector
-    results.append(validator.run_r_python_comparison(
+    result1 = validator.run_r_python_comparison(
         "Edge Case - Non-existent Vector",
         None,  # Skip R comparison for error cases
         lambda: pc.search_census_vectors('nonexistent_variable_xyz', 'CA21', quiet=True)
-    ))
-    
+    )
+    assert 'python_result' in result1
+
     # Test with empty search
-    results.append(validator.run_r_python_comparison(
+    result2 = validator.run_r_python_comparison(
         "Edge Case - Empty Search",
         None,
         lambda: pc.search_census_vectors('', 'CA21', quiet=True)
-    ))
-    
-    return results
+    )
+    assert 'python_result' in result2
 
 
 def run_comprehensive_tests():
