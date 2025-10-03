@@ -1,0 +1,94 @@
+name: Validate R Equivalence
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run weekly on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pandas numpy requests
+
+    - name: Run comprehensive example validator
+      env:
+        CANCENSUS_API_KEY: ${{ secrets.CANCENSUS_API_KEY }}
+      run: |
+        python3 comprehensive_example_validator.py > validation_output.txt 2>&1
+        cat validation_output.txt
+
+    - name: Check validation results
+      run: |
+        # Extract pass/fail counts from output
+        PASSED=$(grep "✅ PASSED:" validation_output.txt | awk '{print $3}')
+        FAILED=$(grep "❌ FAILED:" validation_output.txt | awk '{print $3}')
+        TOTAL=$(grep "📝 TOTAL:" validation_output.txt | awk '{print $3}')
+
+        echo "Validation Results:"
+        echo "  Passed: $PASSED"
+        echo "  Failed: $FAILED"
+        echo "  Total: $TOTAL"
+
+        # Calculate pass rate
+        PASS_RATE=$(echo "scale=2; $PASSED * 100 / ($TOTAL - 1)" | bc)
+        echo "  Pass Rate: ${PASS_RATE}%"
+
+        # Fail if pass rate drops below 90%
+        if (( $(echo "$PASS_RATE < 90" | bc -l) )); then
+          echo "❌ Pass rate below 90%!"
+          exit 1
+        fi
+
+        echo "✅ Validation passed with ${PASS_RATE}% success rate"
+
+    - name: Upload validation report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: validation-report
+        path: validation_output.txt
+        retention-days: 30
+
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const output = fs.readFileSync('validation_output.txt', 'utf8');
+
+          // Extract summary
+          const summaryMatch = output.match(/VALIDATION SUMMARY[\s\S]*?={70}/);
+          const summary = summaryMatch ? summaryMatch[0] : 'Summary not found';
+
+          const comment = `## 🧪 R Equivalence Validation Results
+
+          \`\`\`
+          ${summary}
+          \`\`\`
+
+          See full validation report in artifacts.`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

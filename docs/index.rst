@@ -10,6 +10,8 @@ offering a Python equivalent to the R `cancensus` package.
 
    tutorials/index
    auto_examples/index
+   validation
+   migration
    api/index
 
 Key Features

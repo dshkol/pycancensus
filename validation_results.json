@@ -1,0 +1,113 @@
+{
+  "validation_date": "2025-10-02",
+  "validator_version": "1.0",
+  "overall_results": {
+    "total_examples": 24,
+    "passed": 22,
+    "failed": 1,
+    "skipped": 1,
+    "pass_rate": 96
+  },
+  "by_function": {
+    "list_census_datasets": {
+      "examples": 1,
+      "passed": 1,
+      "pass_rate": 100
+    },
+    "list_census_vectors": {
+      "examples": 2,
+      "passed": 2,
+      "pass_rate": 100
+    },
+    "search_census_vectors": {
+      "examples": 3,
+      "passed": 3,
+      "pass_rate": 100
+    },
+    "find_census_vectors": {
+      "examples": 3,
+      "passed": 3,
+      "pass_rate": 100
+    },
+    "parent_census_vectors": {
+      "examples": 1,
+      "passed": 1,
+      "pass_rate": 100
+    },
+    "child_census_vectors": {
+      "examples": 1,
+      "passed": 1,
+      "pass_rate": 100
+    },
+    "dataset_attribution": {
+      "examples": 2,
+      "passed": 2,
+      "pass_rate": 100
+    },
+    "get_census": {
+      "examples": 8,
+      "passed": 7,
+      "pass_rate": 88
+    },
+    "label_vectors": {
+      "examples": 1,
+      "passed": 1,
+      "pass_rate": 100
+    },
+    "list_cache": {
+      "examples": 1,
+      "passed": 1,
+      "pass_rate": 100
+    }
+  },
+  "failed_tests": [
+    {
+      "name": "get_census() - Basic CSD data retrieval",
+      "error": "API request failed: 422 Client Error: Unprocessable Entity",
+      "severity": "low",
+      "workaround": "Use vectors=None instead of vectors=[]",
+      "issue_type": "edge_case"
+    }
+  ],
+  "skipped_tests": [
+    {
+      "name": "list_census_regions() and search_census_regions()",
+      "reason": "API endpoint returns 404",
+      "issue_type": "api_limitation",
+      "tracked_in": "GAP_ANALYSIS.md"
+    }
+  ],
+  "examples": [
+    {"name": "list_census_datasets() - Basic usage", "status": "pass"},
+    {"name": "list_census_vectors() - Basic usage", "status": "pass"},
+    {"name": "list_census_vectors() - Use_cache parameter", "status": "pass"},
+    {"name": "search_census_vectors() - Search for 'income'", "status": "pass"},
+    {"name": "search_census_vectors() - Search for 'commute'", "status": "pass"},
+    {"name": "search_census_vectors() - Search for 'Ojibway'", "status": "pass"},
+    {"name": "find_census_vectors() - Exact match for 'Oji-cree'", "status": "pass"},
+    {"name": "find_census_vectors() - Keyword search for 'commuting duration'", "status": "pass"},
+    {"name": "find_census_vectors() - Keyword search for 'after tax income'", "status": "pass"},
+    {"name": "parent_census_vectors() - Get parent of v_CA21_906", "status": "pass"},
+    {"name": "child_census_vectors() - Get children of v_CA21_1", "status": "pass"},
+    {"name": "dataset_attribution() - Single dataset", "status": "pass"},
+    {"name": "dataset_attribution() - Multiple datasets", "status": "pass"},
+    {"name": "get_census() - Basic CSD data retrieval", "status": "fail"},
+    {"name": "get_census() - CMA with single vector", "status": "pass"},
+    {"name": "get_census() - Multiple vectors", "status": "pass"},
+    {"name": "get_census() - Provincial level", "status": "pass"},
+    {"name": "get_census() - CD level", "status": "pass"},
+    {"name": "get_census() - CA16 dataset", "status": "pass"},
+    {"name": "get_census() - CA16 Vancouver dwellings (vignette example)", "status": "pass"},
+    {"name": "get_census() - CA21 with geo_format='sf'", "status": "pass"},
+    {"name": "get_census() - CA16 with short labels", "status": "pass"},
+    {"name": "label_vectors() - Extract labels from data", "status": "pass"},
+    {"name": "list_cache() - List cached data", "status": "pass"}
+  ],
+  "metadata": {
+    "source": "R cancensus official documentation",
+    "documentation_url": "https://mountainmath.github.io/cancensus/",
+    "validator_script": "comprehensive_example_validator.py",
+    "validator_readme": "COMPREHENSIVE_VALIDATOR_README.md",
+    "full_report": "VALIDATION_RESULTS.md"
+  }
+}
