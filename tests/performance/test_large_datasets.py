@@ -12,10 +12,18 @@ Tests the library's performance and reliability when handling:
 import os
 import sys
 import time
-import psutil
 import gc
 from pathlib import Path
 import pandas as pd
+import pytest
+
+# Optional dependency for performance monitoring
+try:
+    import psutil
+
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
 
 # Add pycancensus to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -26,30 +34,34 @@ API_KEY = os.environ.get("CANCENSUS_API_KEY") or "CensusMapper_7cb8d0ee55b673053
 
 class PerformanceProfiler:
     """Profile memory and time performance of operations."""
-    
+
     def __init__(self, operation_name: str):
         self.operation_name = operation_name
         self.start_time = None
         self.start_memory = None
         self.peak_memory = None
-        
+
     def __enter__(self):
         gc.collect()  # Clean up before measuring
         self.start_time = time.time()
-        self.start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+        if HAS_PSUTIL:
+            self.start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
         return self
-        
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         end_time = time.time()
-        end_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
-        
         elapsed_time = end_time - self.start_time
-        memory_used = end_memory - self.start_memory
-        
+
         print(f"⚡ {self.operation_name}:")
         print(f"   ⏱️  Time: {elapsed_time:.2f}s")
-        print(f"   💾 Memory: {memory_used:+.1f} MB")
-        print(f"   📊 Peak Memory: {end_memory:.1f} MB")
+
+        if HAS_PSUTIL:
+            end_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+            memory_used = end_memory - self.start_memory
+            print(f"   💾 Memory: {memory_used:+.1f} MB")
+            print(f"   📊 Peak Memory: {end_memory:.1f} MB")
+        else:
+            print(f"   💾 Memory: (psutil not available)")
 
 def test_large_vector_counts():
     """Test performance with many variables."""
