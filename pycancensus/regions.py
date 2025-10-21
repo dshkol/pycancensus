@@ -68,23 +68,33 @@ def list_census_regions(
                 print("Reading regions from cache...")
             return cached_data
 
-    # Query API
-    base_url = "https://censusmapper.ca/api/v1"
-    params = {"dataset": dataset, "api_key": api_key, "format": "json"}
+    # Query API using the correct endpoint (same as R cancensus)
+    # R cancensus uses: https://censusmapper.ca/data_sets/{dataset}/place_names.csv
+    url = f"https://censusmapper.ca/data_sets/{dataset}/place_names.csv"
 
     try:
         if not quiet:
             print(f"Querying CensusMapper API for {dataset} regions...")
 
-        response = requests.get(f"{base_url}/list_regions", params=params, timeout=30)
+        # The endpoint returns gzip-compressed CSV data
+        response = requests.get(url, timeout=30)
         response.raise_for_status()
 
-        data = response.json()
+        # Parse CSV response
+        import io
+        df = pd.read_csv(io.StringIO(response.text))
 
-        if "regions" not in data:
-            raise ValueError("Invalid API response: missing 'regions' field")
+        # Map column names to match expected output format
+        # CSV columns: name, geo_uid, type, population, flag, CMA_UID, CD_UID, PR_UID
+        # Expected: region, name, level, pop, municipal_status, CMA_UID, CD_UID, PR_UID
+        column_mapping = {
+            'geo_uid': 'region',
+            'type': 'level',
+            'population': 'pop',
+            'flag': 'municipal_status',
+        }
 
-        df = pd.DataFrame(data["regions"])
+        df = df.rename(columns=column_mapping)
 
         # Cache the result
         if use_cache:
