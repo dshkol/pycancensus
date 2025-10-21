@@ -160,23 +160,22 @@ class TestMockedAPI:
     @patch('pycancensus.regions.requests.get')
     def test_list_regions(self, mock_get):
         """Test listing regions with mocked API."""
-        # Mock API response
+        # Mock CSV response (new format)
+        csv_response = """name,geo_uid,type,population,flag,CMA_UID,CD_UID,PR_UID
+Vancouver,59933,CMA,2463431,,,59
+Toronto,35535,CMA,5928040,,,35"""
+
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "regions": [
-                {"region": "59933", "name": "Vancouver", "level": "CMA", "pop": 2463431},
-                {"region": "35535", "name": "Toronto", "level": "CMA", "pop": 5928040}
-            ]
-        }
+        mock_response.text = csv_response
         mock_response.raise_for_status.return_value = None
         mock_get.return_value = mock_response
-        
+
         # Set API key
         pc.set_api_key("test_key")
-        
+
         # Test function
         regions = pc.list_census_regions("CA16", use_cache=False)
-        
+
         assert isinstance(regions, pd.DataFrame)
         assert len(regions) == 2
         assert "Vancouver" in regions["name"].values

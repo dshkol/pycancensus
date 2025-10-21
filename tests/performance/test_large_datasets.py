@@ -147,11 +147,12 @@ def test_geographic_data_performance():
             except Exception as e:
                 print(f"   ❌ Failed: {e}")
 
+@pytest.mark.skipif(not HAS_PSUTIL, reason="psutil not installed")
 def test_memory_efficiency():
     """Test memory usage patterns."""
     print("\n💾 Testing Memory Efficiency")
     print("-" * 40)
-    
+
     # Baseline memory
     gc.collect()
     baseline_memory = psutil.Process().memory_info().rss / 1024 / 1024

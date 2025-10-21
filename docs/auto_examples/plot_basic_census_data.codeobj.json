@@ -1,4 +1,13 @@
 {
+ "os.environ.get": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "os.environ",
+   "module_short": "os.environ",
+   "name": "get"
+  }
+ ],
  "pc.child_census_vectors": [
   {
    "is_class": false,
@@ -87,6 +96,15 @@
    "module": "pycancensus",
    "module_short": "pycancensus",
    "name": "search_census_vectors"
+  }
+ ],
+ "pc.set_api_key": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "pycancensus",
+   "module_short": "pycancensus",
+   "name": "set_api_key"
   }
  ]
 }

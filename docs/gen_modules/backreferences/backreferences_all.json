@@ -102,5 +102,14 @@
    "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
    "Basic Census Data Access"
   ]
+ ],
+ "pycancensus.set_api_key": [
+  [
+   "plot_basic_census_data.py",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/examples",
+   "/Users/dmitryshkolnik/Projects/pycancensus/docs/auto_examples",
+   "This example demonstrates how to access Canadian Census data using pycancensus, covering the essential functions for getting started with census data analysis.",
+   "Basic Census Data Access"
+  ]
  ]
 }

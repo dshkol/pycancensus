@@ -32,7 +32,7 @@ Setting up pycancensus
 First, we need to import pycancensus and set up our API key.
 You can get a free API key at: https://censusmapper.ca/users/sign_up
 
-.. GENERATED FROM PYTHON SOURCE LINES 15-27
+.. GENERATED FROM PYTHON SOURCE LINES 15-29
 
 .. code-block:: Python
 
@@ -41,22 +41,24 @@ You can get a free API key at: https://censusmapper.ca/users/sign_up
     import pandas as pd
 
     # Set your API key (you'll need to replace this with your actual key)
-    # For demonstration, we'll handle the case where no key is set
-    try:
-        # pc.set_api_key("your_api_key_here")  # Uncomment and add your key
-        print("API key setup - replace 'your_api_key_here' with your actual key")
-    except:
-        print("No API key set - some examples may not work")
+    import os
+    api_key = os.environ.get('CANCENSUS_API_KEY')
+    if api_key:
+        pc.set_api_key(api_key)
+        print("API key configured")
+    else:
+        print("No API key - examples will show code structure")
+        print("Get your API key at: https://censusmapper.ca/users/sign_up")
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 28-32
+.. GENERATED FROM PYTHON SOURCE LINES 30-34
 
 Exploring Available Datasets
 -----------------------------
 
 Let's start by exploring what Census datasets are available.
 
-.. GENERATED FROM PYTHON SOURCE LINES 32-41
+.. GENERATED FROM PYTHON SOURCE LINES 34-43
 
 .. code-block:: Python
 
@@ -70,14 +72,14 @@ Let's start by exploring what Census datasets are available.
         print("Make sure you have set your API key!")
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 42-46
+.. GENERATED FROM PYTHON SOURCE LINES 44-48
 
 Finding Census Regions
 -----------------------
 
 Next, let's explore the geographic regions available in the Census.
 
-.. GENERATED FROM PYTHON SOURCE LINES 46-63
+.. GENERATED FROM PYTHON SOURCE LINES 48-65
 
 .. code-block:: Python
 
@@ -99,14 +101,14 @@ Next, let's explore the geographic regions available in the Census.
         print(f"Error accessing regions: {e}")
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 64-68
+.. GENERATED FROM PYTHON SOURCE LINES 66-70
 
 Discovering Census Variables
 ----------------------------
 
 Census data is organized into vectors (variables). Let's explore what's available.
 
-.. GENERATED FROM PYTHON SOURCE LINES 68-85
+.. GENERATED FROM PYTHON SOURCE LINES 70-87
 
 .. code-block:: Python
 
@@ -128,14 +130,14 @@ Census data is organized into vectors (variables). Let's explore what's availabl
         print(f"Error accessing vectors: {e}")
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 86-90
+.. GENERATED FROM PYTHON SOURCE LINES 88-92
 
 Getting Census Data
 -------------------
 
 Now let's retrieve actual census data for analysis.
 
-.. GENERATED FROM PYTHON SOURCE LINES 90-113
+.. GENERATED FROM PYTHON SOURCE LINES 92-115
 
 .. code-block:: Python
 
@@ -163,14 +165,14 @@ Now let's retrieve actual census data for analysis.
         print(f"Error retrieving census data: {e}")
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 114-118
+.. GENERATED FROM PYTHON SOURCE LINES 116-120
 
 Working with Geographic Data
 ----------------------------
 
 pycancensus can also retrieve geographic boundaries along with the data.
 
-.. GENERATED FROM PYTHON SOURCE LINES 118-146
+.. GENERATED FROM PYTHON SOURCE LINES 120-148
 
 .. code-block:: Python
 
@@ -203,14 +205,14 @@ pycancensus can also retrieve geographic boundaries along with the data.
         print(f"Error retrieving geographic data: {e}")
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 147-151
+.. GENERATED FROM PYTHON SOURCE LINES 149-153
 
 Vector Hierarchy Navigation
 ---------------------------
 
 pycancensus provides tools to navigate the hierarchical structure of census variables.
 
-.. GENERATED FROM PYTHON SOURCE LINES 151-170
+.. GENERATED FROM PYTHON SOURCE LINES 153-181
 
 .. code-block:: Python
 
@@ -221,20 +223,29 @@ pycancensus provides tools to navigate the hierarchical structure of census vari
         income_vectors = pc.find_census_vectors("CA21", "income")
         print(f"Found {len(income_vectors)} income-related vectors")
     
-        # Navigate vector hierarchies
-        base_vector = "v_CA21_1"  # Total population
-        try:
-            parents = pc.parent_census_vectors(base_vector, dataset="CA21")
-            children = pc.child_census_vectors(base_vector, dataset="CA21")
-            print(f"Vector {base_vector}: {len(parents)} parents, {len(children)} children")
-        except:
-            print("Hierarchy navigation functions not yet implemented")
+        # Navigate vector hierarchies using household income as example
+        # This demonstrates a real hierarchy: main category -> income brackets -> sub-brackets
+        income_parent = "v_CA21_923"  # Household total income groups in 2020
+        high_income_bracket = "v_CA21_939"  # $100,000 and over bracket
+    
+        # Find children of main income vector (all income brackets)
+        income_brackets = pc.child_census_vectors(income_parent, dataset="CA21")
+        print(f"Income brackets under '{income_parent}': {len(income_brackets)} categories")
+    
+        # Find grandchildren (sub-categories of high income bracket)  
+        high_income_subcats = pc.child_census_vectors(high_income_bracket, dataset="CA21")
+        print(f"High-income sub-categories: {len(high_income_subcats)} levels")
+    
+        # Find parent relationship (child -> parent navigation)
+        parent_of_bracket = pc.parent_census_vectors(high_income_bracket, dataset="CA21")
+        if not parent_of_bracket.empty:
+            print(f"Parent of '{high_income_bracket}': {parent_of_bracket['vector'].iloc[0]}")
     
     except Exception as e:
         print(f"Error with vector operations: {e}")
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 171-182
+.. GENERATED FROM PYTHON SOURCE LINES 182-193
 
 Summary
 -------
@@ -248,7 +259,7 @@ This example covered the basic workflow for accessing Canadian Census data:
 
 For more advanced examples, see the other gallery examples and tutorials.
 
-.. GENERATED FROM PYTHON SOURCE LINES 182-190
+.. GENERATED FROM PYTHON SOURCE LINES 193-201
 
 .. code-block:: Python
 

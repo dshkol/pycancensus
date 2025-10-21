@@ -17,12 +17,14 @@ import pycancensus as pc
 import pandas as pd
 
 # Set your API key (you'll need to replace this with your actual key)
-# For demonstration, we'll handle the case where no key is set
-try:
-    # pc.set_api_key("your_api_key_here")  # Uncomment and add your key
-    print("API key setup - replace 'your_api_key_here' with your actual key")
-except:
-    print("No API key set - some examples may not work")
+import os
+api_key = os.environ.get('CANCENSUS_API_KEY')
+if api_key:
+    pc.set_api_key(api_key)
+    print("API key configured")
+else:
+    print("No API key - examples will show code structure")
+    print("Get your API key at: https://censusmapper.ca/users/sign_up")
 
 # %%
 # Exploring Available Datasets
@@ -155,14 +157,23 @@ try:
     income_vectors = pc.find_census_vectors("CA21", "income")
     print(f"Found {len(income_vectors)} income-related vectors")
     
-    # Navigate vector hierarchies
-    base_vector = "v_CA21_1"  # Total population
-    try:
-        parents = pc.parent_census_vectors(base_vector, dataset="CA21")
-        children = pc.child_census_vectors(base_vector, dataset="CA21")
-        print(f"Vector {base_vector}: {len(parents)} parents, {len(children)} children")
-    except:
-        print("Hierarchy navigation functions not yet implemented")
+    # Navigate vector hierarchies using household income as example
+    # This demonstrates a real hierarchy: main category -> income brackets -> sub-brackets
+    income_parent = "v_CA21_923"  # Household total income groups in 2020
+    high_income_bracket = "v_CA21_939"  # $100,000 and over bracket
+    
+    # Find children of main income vector (all income brackets)
+    income_brackets = pc.child_census_vectors(income_parent, dataset="CA21")
+    print(f"Income brackets under '{income_parent}': {len(income_brackets)} categories")
+    
+    # Find grandchildren (sub-categories of high income bracket)  
+    high_income_subcats = pc.child_census_vectors(high_income_bracket, dataset="CA21")
+    print(f"High-income sub-categories: {len(high_income_subcats)} levels")
+    
+    # Find parent relationship (child -> parent navigation)
+    parent_of_bracket = pc.parent_census_vectors(high_income_bracket, dataset="CA21")
+    if not parent_of_bracket.empty:
+        print(f"Parent of '{high_income_bracket}': {parent_of_bracket['vector'].iloc[0]}")
     
 except Exception as e:
     print(f"Error with vector operations: {e}")

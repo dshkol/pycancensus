@@ -155,3 +155,6 @@ tests/cross_validation/.temp/
 .Ruserdata
 *.rdb
 *.rdx
+
+# Temporary equivalency tests (not part of package)
+temp_equivalency/
