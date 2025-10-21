@@ -14,28 +14,28 @@ from .cache import get_cached_data, cache_data
 def label_vectors(x):
     """
     Return Census variable names and labels from a data frame.
-    
+
     This function extracts the census_vectors attribute from a DataFrame
     returned by get_census() when labels='short'. The attribute contains
     a mapping of truncated vector names to their detailed descriptions.
-    
+
     Parameters
     ----------
     x : pd.DataFrame or gpd.GeoDataFrame
         A data frame returned from get_census() with labels='short'.
-        
+
     Returns
     -------
     pd.DataFrame or None
-        A DataFrame with columns 'Vector' (short code) and 'Detail' 
+        A DataFrame with columns 'Vector' (short code) and 'Detail'
         (full description), or None if no vector metadata is available.
-        
+
     Examples
     --------
     >>> import pycancensus as pc
     >>> # Get census data with short labels
     >>> data = pc.get_census(
-    ...     dataset='CA21', 
+    ...     dataset='CA21',
     ...     regions={'CMA': '35535'},
     ...     vectors=['v_CA21_1', 'v_CA21_2'],
     ...     level='CSD',
@@ -46,9 +46,9 @@ def label_vectors(x):
     >>> print(labels)
     """
     import warnings
-    
-    if hasattr(x, 'attrs') and 'census_vectors' in x.attrs:
-        return x.attrs['census_vectors']
+
+    if hasattr(x, "attrs") and "census_vectors" in x.attrs:
+        return x.attrs["census_vectors"]
     else:
         warnings.warn(
             "Data does not have variables to labels. No Census variables selected "

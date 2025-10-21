@@ -82,16 +82,17 @@ def list_census_regions(
 
         # Parse CSV response
         import io
+
         df = pd.read_csv(io.StringIO(response.text))
 
         # Map column names to match expected output format
         # CSV columns: name, geo_uid, type, population, flag, CMA_UID, CD_UID, PR_UID
         # Expected: region, name, level, pop, municipal_status, CMA_UID, CD_UID, PR_UID
         column_mapping = {
-            'geo_uid': 'region',
-            'type': 'level',
-            'population': 'pop',
-            'flag': 'municipal_status',
+            "geo_uid": "region",
+            "type": "level",
+            "population": "pop",
+            "flag": "municipal_status",
         }
 
         df = df.rename(columns=column_mapping)
