@@ -398,7 +398,7 @@ print(f"Average income: ${vancouver_data['v_CA21_434'].mean():,.0f}")
 
 This tutorial covered the essential aspects of working with geographic census data:
 
-✅ **Key Skills Learned:**
+**Key Skills Learned:**
 - Retrieving census data with geographic boundaries
 - Understanding Canadian census geographic levels
 - Creating choropleth maps with matplotlib

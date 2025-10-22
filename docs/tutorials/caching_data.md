@@ -485,7 +485,7 @@ monitor.get_stats()
 
 This tutorial covered comprehensive cache management for pycancensus:
 
-✅ **Key Concepts Learned:**
+**Key Concepts Learned:**
 - How pycancensus caching works automatically 
 - Configuring cache location and settings
 - Measuring cache performance improvements

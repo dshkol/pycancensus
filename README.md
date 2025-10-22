@@ -10,35 +10,35 @@ Access, retrieve, and work with Canadian Census data and geography.
 
 **pycancensus** is a Python package that provides integrated, convenient, and uniform access to Canadian Census data and geography retrieved using the CensusMapper API. This package produces analysis-ready tidy DataFrames and spatial data in multiple formats, with full equivalence to the R cancensus library.
 
-## 🚀 **Recent Updates**
+## Recent Updates
 
-✅ **Full R Library Equivalence** - Verified 100% data compatibility with R cancensus  
-✅ **Enhanced API Reliability** - Production-grade error handling and retry logic  
-✅ **Vector Hierarchy Functions** - Navigate census variable relationships like R  
-✅ **Improved Data Quality** - Fixed column naming and data processing issues  
-✅ **Comprehensive Testing** - 450+ integration tests covering real-world scenarios
+**Full R Library Equivalence** - Verified 100% data compatibility with R cancensus
+**Enhanced API Reliability** - Production-grade error handling and retry logic
+**Vector Hierarchy Functions** - Navigate census variable relationships like R
+**Improved Data Quality** - Fixed column naming and data processing issues
+**Comprehensive Testing** - 450+ integration tests covering real-world scenarios
 
 ## Features
 
-### 📊 **Data Access**
+### Data Access
 * Download Census data and geography in analysis-ready format
 * Support for multiple Census years: 2021, 2016, 2011, 2006, 2001, 1996
 * All Census geographic levels: PR, CMA, CD, CSD, CT, DA, EA, DB
 * Taxfiler data at Census Tract level (2000-2018)
 
-### 🔍 **Variable Discovery**
-* **`list_census_vectors()`** - Browse all available variables
-* **`search_census_vectors()`** - Search variables by keyword
-* **`parent_census_vectors()`** - Navigate variable hierarchies upward
-* **`child_census_vectors()`** - Navigate variable hierarchies downward  
-* **`find_census_vectors()`** - Enhanced variable search with fuzzy matching
+### Variable Discovery
+* `list_census_vectors()` - Browse all available variables
+* `search_census_vectors()` - Search variables by keyword
+* `parent_census_vectors()` - Navigate variable hierarchies upward
+* `child_census_vectors()` - Navigate variable hierarchies downward
+* `find_census_vectors()` - Enhanced variable search with fuzzy matching
 
-### 🗺️ **Geographic Capabilities**
+### Geographic Capabilities
 * GeoPandas integration for spatial analysis
 * Multiple resolution options (simplified/high)
 * Seamless geometry + data integration
 
-### 🛡️ **Reliability & Performance**
+### Reliability & Performance
 * Production-grade error handling with helpful messages
 * Automatic retry logic with exponential backoff
 * Connection pooling for improved performance
@@ -119,7 +119,7 @@ data_2021 = pc.get_census("CA21", {"CSD": "5915022"}, ["v_CA21_1"], "CSD")
 data_2016 = pc.get_census("CA16", {"CSD": "5915022"}, ["v_CA16_401"], "CSD")
 ```
 
-## 🔍 **Variable Discovery Examples**
+## Variable Discovery Examples
 
 ```python
 # Search for housing-related variables
@@ -134,7 +134,7 @@ parent_categories = pc.parent_census_vectors(population_base, dataset="CA21")
 income_vectors = pc.find_census_vectors("CA21", "median household income")
 ```
 
-## 🛡️ **Error Handling & Resilience**
+## Error Handling & Resilience
 
 pycancensus includes production-grade error handling:
 
@@ -151,7 +151,7 @@ except CensusAPIError as e:
     print(f"Suggestion: {e.suggestion}")
 ```
 
-## 🧪 **Testing & Verification**
+## Testing & Verification
 
 pycancensus includes comprehensive testing to ensure reliability and R equivalence:
 
