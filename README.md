@@ -203,7 +203,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Related Packages
 
-This package is inspired by and based on the R [cancensus](https://github.com/mountainMath/cancensus) package.
+This package is explicitly a python port of the R [cancensus](https://github.com/mountainMath/cancensus) package.
 
 ## Statistics Canada Attribution
 
