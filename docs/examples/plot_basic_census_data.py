@@ -179,9 +179,57 @@ except Exception as e:
     print(f"Error with vector operations: {e}")
 
 # %%
+# Extracting Vector Metadata
+# ---------------------------
+#
+# The label_vectors() function extracts metadata for census vectors
+# from DataFrames returned by get_census().
+
+print("\nExtracting Vector Metadata:")
+try:
+    # Get census data with vectors
+    census_with_vectors = pc.get_census(
+        dataset="CA21",
+        regions={"PR": "59"},  # British Columbia
+        vectors=["v_CA21_1", "v_CA21_2", "v_CA21_3"],
+        level="PR",
+        labels="detailed"
+    )
+
+    # Extract vector labels and metadata
+    vector_labels = pc.label_vectors(census_with_vectors)
+
+    print("Vector metadata extracted from census data:")
+    for vector_id, label in vector_labels.items():
+        print(f"  {vector_id}: {label[:60]}...")
+
+except Exception as e:
+    print(f"Error extracting vector metadata: {e}")
+
+# %%
+# Dataset Attribution
+# -------------------
+#
+# Get proper attribution text for census datasets to comply with
+# Statistics Canada Open Data License requirements.
+
+print("\nDataset Attribution:")
+try:
+    # Get attribution for a single dataset
+    single_attribution = pc.dataset_attribution(["CA21"])
+    print(f"\nCA21 Attribution:\n{single_attribution}")
+
+    # Get combined attribution for multiple datasets
+    multi_attribution = pc.dataset_attribution(["CA16", "CA21"])
+    print(f"\nCombined Attribution (CA16 + CA21):\n{multi_attribution}")
+
+except Exception as e:
+    print(f"Error getting dataset attribution: {e}")
+
+# %%
 # Summary
 # -------
-# 
+#
 # This example covered the basic workflow for accessing Canadian Census data:
 # 
 # 1. **Setup**: Import pycancensus and set your API key

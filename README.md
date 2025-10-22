@@ -12,11 +12,12 @@ Access, retrieve, and work with Canadian Census data and geography.
 
 ## Recent Updates
 
-**Full R Library Equivalence** - Verified 100% data compatibility with R cancensus
-**Enhanced API Reliability** - Production-grade error handling and retry logic
-**Vector Hierarchy Functions** - Navigate census variable relationships like R
-**Improved Data Quality** - Fixed column naming and data processing issues
-**Comprehensive Testing** - 450+ integration tests covering real-world scenarios
+- **Full R Library Equivalence**: Verified 100% data compatibility with R cancensus
+- **Enhanced API Reliability**: Production-grade error handling and retry logic
+- **Vector Hierarchy Functions**: Navigate census variable relationships like R
+- **Improved Data Quality**: Fixed column naming and data processing issues
+- **Comprehensive Testing**: 450+ integration tests covering real-world scenarios
+- **National-Level Support**: Added level='C' for Canada-wide baseline comparisons
 
 ## Features
 
@@ -183,6 +184,15 @@ python tests/integration/test_comprehensive_scenarios.py
 ```
 
 See [`tests/cross_validation/results/`](tests/cross_validation/results/) for detailed test results and validation reports.
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
+- Development setup
+- Running tests
+- Code style (Black, flake8)
+- Submitting pull requests
+- Reporting issues
 
 ## License
 

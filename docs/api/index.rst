@@ -13,6 +13,7 @@ Core Data Access
 
    get_census
    get_census_geometry
+   get_intersecting_geometries
 
 Dataset Management
 ------------------
@@ -21,6 +22,7 @@ Dataset Management
    :toctree: generated/
 
    list_census_datasets
+   dataset_attribution
 
 Region Operations
 -----------------
@@ -42,6 +44,7 @@ Vector/Variable Operations
    find_census_vectors
    parent_census_vectors
    child_census_vectors
+   label_vectors
 
 Configuration Management
 ------------------------

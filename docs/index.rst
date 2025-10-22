@@ -26,11 +26,11 @@ Key Features
 Quick Start
 -----------
 
-Install pycancensus:
+Install pycancensus from GitHub (not yet on PyPI):
 
 .. code-block:: bash
 
-   pip install pycancensus
+   pip install git+https://github.com/dshkol/pycancensus.git
 
 Get started with basic census data:
 
@@ -51,11 +51,14 @@ Get started with basic census data:
 Installation
 ------------
 
-Install from PyPI:
+**Note:** pycancensus is not yet published on PyPI. Install directly from GitHub:
 
 .. code-block:: bash
 
-   pip install pycancensus
+   # Install latest version
+   pip install git+https://github.com/dshkol/pycancensus.git
+
+**Coming soon:** Publication to PyPI for ``pip install pycancensus``
 
 For development:
 
