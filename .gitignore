@@ -158,3 +158,34 @@ tests/cross_validation/.temp/
 
 # Temporary equivalency tests (not part of package)
 temp_equivalency/
+
+# Development documentation (keep local only, not on GitHub)
+CLAUDE.md
+GAP_ANALYSIS.md
+MIGRATION_GUIDE.md
+PUBLISH_NOW.md
+PUBLISHING.md
+
+# Development/testing scripts (keep local only)
+test_notebook_concepts.py
+validate_feature_parity.py
+comprehensive_example_validator.py
+
+# Testing artifacts (keep local only)
+validation_outputs/
+
+# Cross-validation testing (entire directory - development only)
+tests/cross_validation/
+
+# Sphinx-generated documentation (rebuilds from source)
+docs/auto_examples/
+docs/gen_modules/
+
+# Generated tutorial data files (created when running tutorials)
+docs/tutorials/*.dbf
+docs/tutorials/*.shp
+docs/tutorials/*.shx
+docs/tutorials/*.prj
+docs/tutorials/*.cpg
+docs/tutorials/*.geojson
+docs/tutorials/*.xlsx
