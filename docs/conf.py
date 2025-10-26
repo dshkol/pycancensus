@@ -28,11 +28,12 @@ if on_rtd:
     # Set up API key for RTD builds if available
     api_key = os.environ.get('CANCENSUS_API_KEY')
     if api_key:
-        # Set up API key for examples to use
-        os.environ['PYCANCENSUS_API_KEY'] = api_key
-        print("API key configured for RTD build")
+        # Set API key for pycancensus to use during doc build
+        import pycancensus as pc
+        pc.set_api_key(api_key)
+        print("API key configured for RTD build - examples will use real census data")
     else:
-        print("No API key found - examples will use mock data")
+        print("No API key found - examples will use mock/sample data")
     
     # Disable problematic extensions on RTD if needed
     print("Building on Read the Docs - using RTD-optimized configuration")
@@ -106,8 +107,8 @@ sphinx_gallery_conf = {
         "# It can be customized to whatever you like\n"
         "%matplotlib inline"
     ),
-    # Don't execute examples on RTD if they require API keys
-    'plot_gallery': 'False' if on_rtd else 'True',
+    # Execute examples on RTD to generate visualizations
+    'plot_gallery': 'True',
 }
 
 # Intersphinx mapping
