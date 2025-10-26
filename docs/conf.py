@@ -88,6 +88,9 @@ myst_enable_extensions = [
 
 nb_execution_mode = "auto"
 nb_execution_timeout = 300
+nb_render_priority = {
+    "html": ("image/png", "image/svg+xml", "text/html"),
+}
 
 # Sphinx Gallery configuration
 sphinx_gallery_conf = {
@@ -108,7 +111,7 @@ sphinx_gallery_conf = {
         "%matplotlib inline"
     ),
     # Execute examples on RTD to generate visualizations
-    'plot_gallery': 'True',
+    'plot_gallery': True,
 }
 
 # Intersphinx mapping
