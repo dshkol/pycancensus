@@ -129,7 +129,6 @@ ax.set_title('Population by Municipality\nVancouver CMA, 2021', fontsize=16)
 ax.axis('off')  # Remove axes for cleaner look
 
 plt.tight_layout()
-plt.show()
 ```
 
 ## Multi-Variable Mapping
@@ -167,7 +166,6 @@ ax2.axis('off')
 
 plt.suptitle('Vancouver CMA: Population vs Income', fontsize=16, y=1.02)
 plt.tight_layout()
-plt.show()
 ```
 
 ## Working with Different Geographic Levels
@@ -228,7 +226,6 @@ try:
     boundaries.plot(ax=ax, edgecolor='blue', facecolor='lightblue', alpha=0.7)
     ax.set_title('Vancouver CMA Municipal Boundaries')
     ax.axis('off')
-    plt.show()
     
 except Exception as e:
     print(f"Error getting boundaries: {e}")
@@ -238,7 +235,6 @@ except Exception as e:
     vancouver_data.boundary.plot(ax=ax, color='blue', linewidth=2)
     ax.set_title('Sample Municipal Boundaries')
     ax.axis('off')
-    plt.show()
 ```
 
 ## Spatial Analysis
