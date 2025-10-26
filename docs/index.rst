@@ -1,8 +1,8 @@
 pycancensus: Canadian Census Data in Python
 ===========================================
 
-**pycancensus** provides a Python interface to access Canadian Census data and geographies, 
-offering a Python equivalent to the R `cancensus` package.
+**pycancensus** provides a Python interface to access Canadian Census data and geographies,
+and is explicitly a Python port of the R `cancensus` package.
 
 .. toctree::
    :maxdepth: 2
