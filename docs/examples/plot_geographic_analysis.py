@@ -41,28 +41,7 @@ try:
     
 except Exception as e:
     print(f"Error retrieving data: {e}")
-    print("Creating sample data for demonstration...")
-    
-    # Create sample data for demonstration when API is not available
-    import numpy as np
-    from shapely.geometry import Point
-    import geopandas as gpd
-    
-    # Sample coordinates around Vancouver area
-    n_points = 50
-    np.random.seed(42)
-    lons = np.random.uniform(-123.3, -122.9, n_points)
-    lats = np.random.uniform(49.15, 49.35, n_points)
-    
-    geo_data = gpd.GeoDataFrame({
-        'GeoUID': [f'59933{i:03d}' for i in range(n_points)],
-        'name': [f'Census Tract {i}' for i in range(n_points)],
-        'v_CA21_1': np.random.randint(1000, 8000, n_points),  # Population
-        'v_CA21_434': np.random.randint(30000, 120000, n_points),  # Median income
-        'geometry': [Point(lon, lat) for lon, lat in zip(lons, lats)]
-    }, crs='EPSG:4326')
-    
-    print("Using sample data for demonstration")
+    raise  # Fail if API call doesn't work - no fallbacks
 
 # %%
 # Creating a Basic Map

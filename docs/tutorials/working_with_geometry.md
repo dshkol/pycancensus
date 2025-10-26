@@ -29,8 +29,10 @@ import pycancensus as pc
 import pandas as pd
 import matplotlib.pyplot as plt
 import geopandas as gpd
+from IPython.display import display
 
-# Set up plotting
+# Set up plotting for notebook display
+%matplotlib inline
 plt.style.use('default')
 plt.rcParams['figure.figsize'] = (12, 8)
 
@@ -70,41 +72,19 @@ try:
         regions={"CMA": "59933"},  # Vancouver CMA
         vectors=["v_CA21_1", "v_CA21_434"],  # Population and median income
         level="CSD",  # Municipality level
-        geo_format="geopandas"
+        geo_format="geopandas",
+        labels="short"
     )
     
     print(f"Retrieved data for {len(vancouver_data)} municipalities")
-    print(f"Columns: {list(vancouver_data.columns)}")
     print(f"CRS: {vancouver_data.crs}")
-    
+
     # Show sample data
     display(vancouver_data[['name', 'v_CA21_1', 'v_CA21_434']].head())
     
 except Exception as e:
     print(f"Error retrieving data: {e}")
-    print("Creating sample data for demonstration...")
-    
-    # Create sample data when API is not available
-    import numpy as np
-    from shapely.geometry import Polygon
-    
-    # Sample Vancouver area municipalities
-    municipalities = [
-        'Vancouver', 'Surrey', 'Burnaby', 'Richmond', 'Coquitlam',
-        'Langley', 'North Vancouver', 'West Vancouver', 'New Westminster'
-    ]
-    
-    np.random.seed(42)
-    vancouver_data = gpd.GeoDataFrame({
-        'GeoUID': [f'59933{i:02d}' for i in range(len(municipalities))],
-        'name': municipalities,
-        'v_CA21_1': np.random.randint(50000, 650000, len(municipalities)),
-        'v_CA21_434': np.random.randint(40000, 100000, len(municipalities)),
-        'geometry': [Polygon([(i, j), (i+1, j), (i+1, j+1), (i, j+1)]) 
-                    for i, j in enumerate(range(len(municipalities)))]
-    }, crs='EPSG:4326')
-    
-    print("Using sample data for demonstration")
+    raise  # Fail if API call doesn't work - no fallbacks
 ```
 
 ## Creating Basic Maps
@@ -129,7 +109,7 @@ ax.set_title('Population by Municipality\nVancouver CMA, 2021', fontsize=16)
 ax.axis('off')  # Remove axes for cleaner look
 
 plt.tight_layout()
-fig  # Display the figure
+display(fig)
 ```
 
 ## Multi-Variable Mapping
@@ -167,7 +147,7 @@ ax2.axis('off')
 
 plt.suptitle('Vancouver CMA: Population vs Income', fontsize=16, y=1.02)
 plt.tight_layout()
-fig  # Display the figure
+display(fig)
 ```
 
 ## Working with Different Geographic Levels
@@ -190,7 +170,8 @@ try:
                 dataset="CA21",
                 regions={"CMA": "59933"},
                 vectors=["v_CA21_1"],
-                level=level
+                level=level,
+                labels="short"
             )
             print(f"{name:15} ({level}): {len(data):4,} regions")
         except Exception as e:
@@ -228,17 +209,11 @@ try:
     boundaries.plot(ax=ax, edgecolor='blue', facecolor='lightblue', alpha=0.7)
     ax.set_title('Vancouver CMA Municipal Boundaries')
     ax.axis('off')
-    fig  # Display the figure
+    display(fig)
     
 except Exception as e:
     print(f"Error getting boundaries: {e}")
-    
-    # Use our sample data
-    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
-    vancouver_data.boundary.plot(ax=ax, color='blue', linewidth=2)
-    ax.set_title('Sample Municipal Boundaries')
-    ax.axis('off')
-    fig  # Display the figure
+    raise  # Fail if API call doesn't work - no fallbacks
 ```
 
 ## Spatial Analysis

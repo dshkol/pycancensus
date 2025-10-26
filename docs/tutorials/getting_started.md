@@ -154,7 +154,7 @@ try:
     # Get real data for Toronto CMA using our income hierarchy vectors
     toronto_data = get_census(
         dataset='CA21',
-        regions={'CMA': '535'},  # Toronto CMA
+        regions={'CMA': '35535'},  # Toronto CMA
         vectors=['v_CA21_923', 'v_CA21_939', 'v_CA21_942', 'v_CA21_943'],  # Income categories
         level='CMA',
         use_cache=False

@@ -117,6 +117,8 @@ def get_census(
         if cached_data is not None:
             if not quiet:
                 print(f"Reading data from cache...")
+            # Process labels for cached data
+            cached_data = _extract_vector_metadata(cached_data, vectors, labels)
             return cached_data
 
     # Build API request exactly like the R package
@@ -441,7 +443,7 @@ def _process_geojson_response(data, vectors, labels):
     if "features" not in data:
         raise ValueError("Invalid GeoJSON response: missing 'features' field")
 
-    gdf = gpd.GeoDataFrame.from_features(data["features"])
+    gdf = gpd.GeoDataFrame.from_features(data["features"], crs="EPSG:4326")
 
     # Apply the same numeric conversion logic as CSV processing
     # This was missing and causing all columns to remain as strings
