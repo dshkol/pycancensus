@@ -59,17 +59,17 @@ try:
     # Check current cache settings
     cache_path = pc.get_cache_path()
     print(f"Current cache path: {cache_path}")
-    
+
     # Check if cache directory exists
     if os.path.exists(cache_path):
         print(f"Cache directory exists: ✓")
-        
+
         # List cache contents
         cache_files = list(Path(cache_path).glob("*"))
         print(f"Cache contains {len(cache_files)} files")
     else:
         print("Cache directory doesn't exist yet")
-        
+
 except Exception as e:
     print(f"Error checking cache: {e}")
 ```
@@ -81,13 +81,13 @@ try:
     # Set custom cache location
     custom_cache = os.path.expanduser("~/my_census_cache")
     pc.set_cache_path(custom_cache)
-    
+
     print(f"Cache path set to: {pc.get_cache_path()}")
-    
+
     # Create directory if it doesn't exist
     os.makedirs(custom_cache, exist_ok=True)
     print("Custom cache directory created")
-    
+
 except Exception as e:
     print(f"Error setting cache path: {e}")
 ```
@@ -101,40 +101,40 @@ try:
     # First request (uncached) - will be slower
     print("Making first request (will be cached)...")
     start_time = time.time()
-    
+
     data1 = pc.get_census(
         dataset="CA21",
         regions={"CMA": "59933"},  # Vancouver
         vectors=["v_CA21_1", "v_CA21_434"],
         level="CSD"
     )
-    
+
     first_time = time.time() - start_time
     print(f"First request: {first_time:.2f} seconds")
     print(f"Retrieved {len(data1)} records")
-    
+
     # Second identical request (cached) - will be faster
     print("\nMaking identical request (will use cache)...")
     start_time = time.time()
-    
+
     data2 = pc.get_census(
-        dataset="CA21", 
+        dataset="CA21",
         regions={"CMA": "59933"},
         vectors=["v_CA21_1", "v_CA21_434"],
         level="CSD"
     )
-    
+
     second_time = time.time() - start_time
     print(f"Second request: {second_time:.2f} seconds")
-    
+
     # Compare performance
     if first_time > 0 and second_time > 0:
         speedup = first_time / second_time
         print(f"\nSpeedup: {speedup:.1f}x faster!")
-    
+
     # Verify data is identical
     print(f"Data identical: {data1.equals(data2)}")
-    
+
 except Exception as e:
     print(f"Error demonstrating cache: {e}")
     print("This requires API access to demonstrate fully")
@@ -144,26 +144,21 @@ except Exception as e:
 
 ### Listing Cached Data
 
+The `list_cache()` function shows what's currently in your cache:
+
 ```{code-cell} python
 try:
     # List what's in the cache
-    cached_data = pc.list_cached_data()
-    
-    if len(cached_data) > 0:
-        print(f"Found {len(cached_data)} cached datasets:")
-        print("\nCache contents:")
-        for i, cache_info in enumerate(cached_data[:5]):  # Show first 5
-            print(f"{i+1}. Dataset: {cache_info.get('dataset', 'Unknown')}")
-            print(f"   Regions: {cache_info.get('regions', 'Unknown')}")
-            print(f"   Vectors: {len(cache_info.get('vectors', []))} vectors")
-            print(f"   Size: {cache_info.get('size', 'Unknown')}")
-            print()
-    else:
-        print("No cached data found")
-        
+    cached_items = pc.list_cache()
+
+    print(f"Found {len(cached_items)} cached items:")
+    print("\nCache contents:")
+    for i, item in enumerate(cached_items[:5]):  # Show first 5
+        print(f"{i+1}. {item}")
+
 except Exception as e:
     print(f"Error listing cache: {e}")
-    print("Cache listing requires cached data to exist")
+    print("Cache may be empty or cache directory may not exist")
 ```
 
 ### Cache Statistics
@@ -171,17 +166,17 @@ except Exception as e:
 ```{code-cell} python
 try:
     cache_path = pc.get_cache_path()
-    
+
     if os.path.exists(cache_path):
         # Calculate cache size
         total_size = 0
         file_count = 0
-        
+
         for file_path in Path(cache_path).rglob("*"):
             if file_path.is_file():
                 total_size += file_path.stat().st_size
                 file_count += 1
-        
+
         # Convert to readable format
         if total_size > 1024**3:  # GB
             size_str = f"{total_size / 1024**3:.2f} GB"
@@ -191,16 +186,16 @@ try:
             size_str = f"{total_size / 1024:.2f} KB"
         else:
             size_str = f"{total_size} bytes"
-        
+
         print("Cache Statistics:")
         print("="*20)
         print(f"Location: {cache_path}")
         print(f"Files: {file_count}")
         print(f"Total size: {size_str}")
-        
+
     else:
         print("Cache directory doesn't exist")
-        
+
 except Exception as e:
     print(f"Error calculating cache stats: {e}")
 ```
@@ -209,11 +204,13 @@ except Exception as e:
 
 ### Bypassing Cache
 
+You can force fresh data by using the `use_cache=False` parameter:
+
 ```{code-cell} python
 try:
     # Force fresh data (bypass cache)
     print("Forcing fresh data download...")
-    
+
     fresh_data = pc.get_census(
         dataset="CA21",
         regions={"PR": "59"},  # British Columbia
@@ -221,55 +218,53 @@ try:
         level="PR",
         use_cache=False  # Force fresh download
     )
-    
+
     print(f"Fresh data retrieved: {len(fresh_data)} records")
-    
+
 except Exception as e:
     print(f"Error bypassing cache: {e}")
     print("This requires API access")
 ```
 
-### Cache Expiration
+### Cache Behavior
 
 ```{code-cell} python
 # pycancensus cache behavior
-print("Cache Expiration Policy:")
+print("Cache Behavior:")
 print("="*25)
-print("• Census data rarely changes, so cache persists indefinitely")
-print("• Vector lists and region lists are cached for performance")
-print("• Geographic boundaries are cached (they don't change)")
-print("• API responses include timestamps for freshness checking")
+print("• Census data rarely changes, so cache persists")
+print("• Vector lists and region lists are cached")
+print("• Geographic boundaries are cached")
+print("• API responses include metadata for freshness")
 print("\nTo force refresh:")
-print("• Use use_cache=False parameter")
-print("• Clear specific cache entries")
-print("• Clear entire cache")
+print("• Use use_cache=False parameter in get_census()")
+print("• Remove specific cache entries with remove_from_cache()")
+print("• Clear entire cache with clear_cache()")
 ```
 
 ## Cache Maintenance
 
 ### Selective Cache Removal
 
+You can remove specific items from the cache:
+
 ```{code-cell} python
 try:
-    # Remove specific cached data
-    print("Cache removal options:")
-    
-    # Option 1: Remove by dataset
-    # pc.remove_cached_data(dataset="CA16")
-    print("• Remove by dataset: pc.remove_cached_data(dataset='CA16')")
-    
-    # Option 2: Remove by region
-    # pc.remove_cached_data(regions={"CMA": "59933"})
-    print("• Remove by region: pc.remove_cached_data(regions={'CMA': '59933'})")
-    
-    # Option 3: Remove old data
-    # pc.remove_cached_data(older_than_days=30)
-    print("• Remove old data: pc.remove_cached_data(older_than_days=30)")
-    
-    print("\n(Commands shown for reference - not executed)")
-    
+    # Example: Remove a specific cached item
+    # First, let's see what's in the cache
+    cached_items = pc.list_cache()
+
+    if len(cached_items) > 0:
+        print(f"Cache contains {len(cached_items)} items")
+        print("\nTo remove a specific item, use:")
+        print("pc.remove_from_cache('cache_key_name')")
+        print("\nExample:")
+        print(f"pc.remove_from_cache('{cached_items[0]}')")
+    else:
+        print("Cache is empty - nothing to remove")
+
 except Exception as e:
-    print(f"Cache removal info: {e}")
+    print(f"Note: {e}")
 ```
 
 ### Complete Cache Reset
@@ -279,22 +274,22 @@ try:
     # Clear entire cache
     print("Complete cache reset:")
     print("="*20)
-    
+
     # Get cache size before
     cache_path = pc.get_cache_path()
     if os.path.exists(cache_path):
         before_files = len(list(Path(cache_path).rglob("*")))
         print(f"Files before reset: {before_files}")
-        
-        # Clear cache (commented out to avoid actually clearing)
+
+        # To clear cache, uncomment the line below:
         # pc.clear_cache()
-        print("To clear entire cache: pc.clear_cache()")
-        
-        print("⚠️  Warning: This removes all cached data!")
+        print("\nTo clear entire cache: pc.clear_cache()")
+
+        print("\n⚠️  Warning: This removes all cached data!")
         print("   Use with caution as it will slow down future requests")
     else:
         print("No cache to clear")
-        
+
 except Exception as e:
     print(f"Error with cache reset: {e}")
 ```
@@ -303,11 +298,13 @@ except Exception as e:
 
 ### Preloading Common Data
 
+For applications that frequently access certain data, preload it into cache:
+
 ```{code-cell} python
 # Strategy for preloading frequently used data
 common_datasets = ["CA21", "CA16"]
 major_cmas = {
-    "Toronto": "535", 
+    "Toronto": "535",
     "Montreal": "462",
     "Vancouver": "59933",
     "Calgary": "825",
@@ -319,7 +316,7 @@ print("="*20)
 print("For applications that frequently access certain data:")
 print()
 
-for city, cma_code in major_cmas.items():
+for city, cma_code in list(major_cmas.items())[:2]:  # Show 2 examples
     print(f"# Preload {city} data")
     print(f"""data_{city.lower()} = pc.get_census(
     dataset="CA21",
@@ -341,21 +338,21 @@ def efficient_census_analysis(regions_list, vectors_list):
     """
     print("Cache-Aware Function Design:")
     print("="*30)
-    
+
     # Check what's already cached
     try:
-        cached = pc.list_cached_data()
-        print(f"Found {len(cached)} cached datasets")
+        cached = pc.list_cache()
+        print(f"Found {len(cached)} cached items")
     except:
         print("Cache check not available")
-    
-    # Batch similar requests
+
+    # Best practices
     print("\nBest practices:")
     print("• Group requests by dataset and geography level")
     print("• Request multiple vectors in single call")
     print("• Reuse data objects when possible")
     print("• Check cache before making requests")
-    
+
     return "Design pattern demonstrated"
 
 # Example usage
@@ -383,7 +380,7 @@ print()
 print("2. Disk Space:")
 print("   Problem: Cache grows too large")
 print("   Solution: Regular cache cleanup")
-print("   pc.remove_cached_data(older_than_days=30)")
+print("   pc.clear_cache()")
 print()
 
 print("3. Stale Data:")
@@ -403,14 +400,14 @@ print("   pc.clear_cache()")
 ```{code-cell} python
 def diagnose_cache_health():
     """Diagnostic function for cache health"""
-    
+
     print("Cache Health Diagnostic:")
     print("="*25)
-    
+
     try:
         cache_path = pc.get_cache_path()
         print(f"✓ Cache path accessible: {cache_path}")
-        
+
         # Check if writable
         test_file = os.path.join(cache_path, ".test_write")
         try:
@@ -421,14 +418,14 @@ def diagnose_cache_health():
             print("✓ Cache directory is writable")
         except:
             print("✗ Cache directory is not writable")
-        
+
         # Check space usage
         if os.path.exists(cache_path):
             file_count = len(list(Path(cache_path).rglob("*")))
             print(f"✓ Cache contains {file_count} files")
         else:
             print("! Cache directory doesn't exist yet")
-            
+
     except Exception as e:
         print(f"✗ Cache diagnostic error: {e}")
 
@@ -443,10 +440,10 @@ diagnose_cache_health()
 ```{code-cell} python
 class CacheMonitor:
     """Simple cache performance monitor"""
-    
+
     def __init__(self):
         self.requests = []
-    
+
     def log_request(self, request_type, duration, cached=False):
         self.requests.append({
             'type': request_type,
@@ -454,20 +451,20 @@ class CacheMonitor:
             'cached': cached,
             'timestamp': time.time()
         })
-    
+
     def get_stats(self):
         if not self.requests:
             return "No requests logged"
-        
+
         cached_requests = [r for r in self.requests if r['cached']]
         uncached_requests = [r for r in self.requests if not r['cached']]
-        
+
         print("Cache Performance Stats:")
         print("="*25)
         print(f"Total requests: {len(self.requests)}")
         print(f"Cache hits: {len(cached_requests)}")
         print(f"Cache misses: {len(uncached_requests)}")
-        
+
         if cached_requests and uncached_requests:
             avg_cached = sum(r['duration'] for r in cached_requests) / len(cached_requests)
             avg_uncached = sum(r['duration'] for r in uncached_requests) / len(uncached_requests)
@@ -486,23 +483,31 @@ monitor.get_stats()
 This tutorial covered comprehensive cache management for pycancensus:
 
 **Key Concepts Learned:**
-- How pycancensus caching works automatically 
+- How pycancensus caching works automatically
 - Configuring cache location and settings
 - Measuring cache performance improvements
 - Managing and maintaining the cache
 - Troubleshooting common cache issues
 - Cache-aware application design patterns
 
+**Available Cache Functions:**
+- `get_cache_path()` - Get current cache directory
+- `set_cache_path(path)` - Set custom cache directory
+- `list_cache()` - List cached items
+- `remove_from_cache(key)` - Remove specific cache entry
+- `clear_cache()` - Clear all cached data
+- `use_cache=False` - Bypass cache in get_census()
+
 ### Best Practices Summary:
 1. **Let cache work automatically** - Default behavior is optimized
-2. **Monitor cache size** - Clean up old data periodically  
+2. **Monitor cache size** - Clean up periodically if needed
 3. **Use consistent requests** - Same parameters = cache hits
 4. **Batch requests** - Request multiple vectors together
 5. **Handle cache errors** - Have fallbacks for cache issues
 
 ### Next Steps:
 - Implement cache monitoring in your applications
-- Set up automated cache maintenance schedules
+- Set up cache maintenance routines
 - Experiment with preloading strategies for your use cases
 - Combine caching with other performance optimizations
 

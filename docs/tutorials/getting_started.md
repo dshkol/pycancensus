@@ -154,9 +154,9 @@ try:
     # Get real data for Toronto CMA using our income hierarchy vectors
     toronto_data = get_census(
         dataset='CA21',
-        regions={'cma': '535'},  # Toronto CMA
+        regions={'CMA': '535'},  # Toronto CMA
         vectors=['v_CA21_923', 'v_CA21_939', 'v_CA21_942', 'v_CA21_943'],  # Income categories
-        level='cma',
+        level='CMA',
         use_cache=False
     )
     
@@ -187,7 +187,7 @@ except Exception as e:
 4. **find_census_vectors()** - Smart search with relevance scoring 
 5. **Real Data** - Actual census data retrieved and analyzed
 
-🎯 **Key Improvement**: Unlike previous versions, these hierarchy functions now work with **clear, well-defined parent-child relationships** in the census data structure.
+**Key Improvement**: Unlike previous versions, these hierarchy functions now work with **clear, well-defined parent-child relationships** in the census data structure.
 
 ### Next Steps:
 - Explore other hierarchies (income, education, housing)
