@@ -157,6 +157,7 @@ try:
         regions={'CMA': '35535'},  # Toronto CMA
         vectors=['v_CA21_923', 'v_CA21_939', 'v_CA21_942', 'v_CA21_943'],  # Income categories
         level='CMA',
+        labels='short',
         use_cache=False
     )
     

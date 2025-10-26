@@ -48,7 +48,14 @@ def label_vectors(x):
     import warnings
 
     if hasattr(x, "attrs") and "census_vectors" in x.attrs:
-        return x.attrs["census_vectors"]
+        # Convert stored dict back to DataFrame
+        metadata = x.attrs["census_vectors"]
+        if isinstance(metadata, list):
+            # Stored as list of dicts
+            return pd.DataFrame(metadata)
+        else:
+            # Already a DataFrame (legacy)
+            return metadata
     else:
         warnings.warn(
             "Data does not have variables to labels. No Census variables selected "

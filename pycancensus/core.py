@@ -353,8 +353,9 @@ def _extract_vector_metadata(df, vectors, labels):
         if rename_dict:
             df = df.rename(columns=rename_dict)
 
-        # Store metadata as attribute (always store, but mainly useful with short labels)
-        df.attrs["census_vectors"] = metadata_df
+        # Store metadata as dict to avoid pandas attrs comparison bug
+        # Convert DataFrame to list of dicts for storage
+        df.attrs["census_vectors"] = metadata_df.to_dict(orient='records')
 
     return df
 
