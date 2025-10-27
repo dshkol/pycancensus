@@ -3,6 +3,8 @@ pycancensus: Access, retrieve, and work with Canadian Census data and geography.
 
 This package provides integrated, convenient, and uniform access to Canadian
 Census data and geography retrieved using the CensusMapper API.
+
+Documentation: https://pycancensus.readthedocs.io/
 """
 
 __version__ = "0.1.0"

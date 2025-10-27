@@ -85,6 +85,17 @@ import pycancensus as pc
 pc.set_api_key("your_api_key_here")
 ```
 
+## Documentation
+
+**Full documentation is available at [pycancensus.readthedocs.io](https://pycancensus.readthedocs.io/)**
+
+The documentation includes:
+- **[Getting Started Tutorial](https://pycancensus.readthedocs.io/en/latest/tutorials/getting_started.html)** - Learn the basics
+- **[Working with Geographic Data](https://pycancensus.readthedocs.io/en/latest/tutorials/working_with_geometry.html)** - Maps and spatial analysis
+- **[Example Gallery](https://pycancensus.readthedocs.io/en/latest/auto_examples/index.html)** - Real-world usage examples
+- **[API Reference](https://pycancensus.readthedocs.io/en/latest/api/index.html)** - Complete function documentation
+- **[R to Python Migration Guide](https://pycancensus.readthedocs.io/en/latest/migration.html)** - For R cancensus users
+
 ## Quick Start
 
 ```python
