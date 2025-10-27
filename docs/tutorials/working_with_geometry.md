@@ -221,18 +221,22 @@ except Exception as e:
 Perform basic spatial analysis with geopandas:
 
 ```{code-cell} python
+# Reproject to a projected CRS for accurate area calculations
+# EPSG:3347 is Statistics Canada Lambert Conformal Conic - designed for Canada
+vancouver_projected = vancouver_data.to_crs('EPSG:3347')
+
 # Calculate area and population density
-vancouver_data['area_km2'] = vancouver_data.geometry.area / 1e6  # Convert to km²
-vancouver_data['pop_density'] = vancouver_data['v_CA21_1'] / vancouver_data['area_km2']
+vancouver_projected['area_km2'] = vancouver_projected.geometry.area / 1e6  # Convert m² to km²
+vancouver_projected['pop_density'] = vancouver_projected['v_CA21_1'] / vancouver_projected['area_km2']
 
 print("Population Density Analysis:")
 print("="*30)
-print(f"Highest density: {vancouver_data['pop_density'].max():.0f} people/km²")
-print(f"Lowest density:  {vancouver_data['pop_density'].min():.0f} people/km²")
-print(f"Average density: {vancouver_data['pop_density'].mean():.0f} people/km²")
+print(f"Highest density: {vancouver_projected['pop_density'].max():.0f} people/km²")
+print(f"Lowest density:  {vancouver_projected['pop_density'].min():.0f} people/km²")
+print(f"Average density: {vancouver_projected['pop_density'].mean():.0f} people/km²")
 
 # Show top 3 densest areas
-densest = vancouver_data.nlargest(3, 'pop_density')[['name', 'pop_density']]
+densest = vancouver_projected.nlargest(3, 'pop_density')[['name', 'pop_density']]
 print(f"\nTop 3 densest municipalities:")
 for idx, row in densest.iterrows():
     print(f"  {row['name']}: {row['pop_density']:.0f} people/km²")
@@ -246,16 +250,16 @@ Understanding and working with projections:
 print("Working with Coordinate Reference Systems:")
 print("="*45)
 print(f"Original CRS: {vancouver_data.crs}")
-
-# Convert to a projected coordinate system for accurate area calculations
-vancouver_projected = vancouver_data.to_crs('EPSG:3347')  # Statistics Canada Lambert
 print(f"Projected CRS: {vancouver_projected.crs}")
 
-# Calculate more accurate areas
-vancouver_projected['accurate_area_km2'] = vancouver_projected.geometry.area / 1e6
-print(f"\nArea calculation comparison (first municipality):")
-print(f"Geographic CRS: {vancouver_data['area_km2'].iloc[0]:.2f} km²")
-print(f"Projected CRS:  {vancouver_projected['accurate_area_km2'].iloc[0]:.2f} km²")
+print(f"\nCommon CRS options for Canadian data:")
+print("• EPSG:4326 - WGS84 (geographic, degrees)")
+print("• EPSG:3347 - Statistics Canada Lambert (Canada-wide)")
+print("• EPSG:3157 - NAD83 UTM Zone 10N (BC, Western Canada)")
+
+# Example: Convert back to geographic for web mapping
+vancouver_geo = vancouver_projected.to_crs('EPSG:4326')
+print(f"\nConverted back to geographic: {vancouver_geo.crs}")
 ```
 
 ## Exporting Geographic Data
@@ -265,23 +269,31 @@ Save your data for use in other applications:
 ```{code-cell} python
 # Export to various formats
 try:
-    # GeoJSON (web-friendly)
-    vancouver_data.to_file("vancouver_census.geojson", driver="GeoJSON")
+    # Prepare clean data for export (use original geographic CRS)
+    export_data = vancouver_data[['geometry', 'name', 'v_CA21_1', 'v_CA21_434']].copy()
+
+    # GeoJSON (web-friendly, supports long column names)
+    export_data.to_file("vancouver_census.geojson", driver="GeoJSON")
     print("✓ Exported to GeoJSON")
-    
-    # Shapefile (GIS standard)
-    vancouver_data.to_file("vancouver_census.shp")
+
+    # Shapefile (GIS standard, has column name limitations)
+    # Rename columns to be shapefile-friendly (10 char max)
+    shp_data = export_data.rename(columns={
+        'v_CA21_1': 'pop2021',
+        'v_CA21_434': 'income'
+    })
+    shp_data.to_file("vancouver_census.shp")
     print("✓ Exported to Shapefile")
-    
-    # Excel with geometry as WKT
-    df_export = vancouver_data.copy()
-    df_export['geometry_wkt'] = df_export.geometry.to_wkt()
-    df_export.drop('geometry', axis=1).to_excel("vancouver_census.xlsx", index=False)
-    print("✓ Exported to Excel")
-    
+
+    # CSV with geometry as WKT (for Excel/analysis)
+    csv_export = export_data.copy()
+    csv_export['geometry_wkt'] = csv_export.geometry.to_wkt()
+    csv_export.drop('geometry', axis=1).to_csv("vancouver_census.csv", index=False)
+    print("✓ Exported to CSV")
+
 except Exception as e:
-    print(f"Export example (files not actually created): {e}")
-    print("Supported formats: GeoJSON, Shapefile, KML, Excel")
+    print(f"Export example: {e}")
+    print("Note: Supported formats include GeoJSON, Shapefile, KML, GeoPackage")
 ```
 
 ## Interactive Maps with Folium
