@@ -2,11 +2,13 @@
 Functions for working with census datasets.
 """
 
-import requests
-import pandas as pd
-from typing import Optional
+import re
+from typing import List, Optional
 
-from .settings import get_api_key
+import pandas as pd
+import requests
+
+from .settings import get_api_key, CENSUSMAPPER_API_URL
 from .cache import get_cached_data, cache_data
 
 
@@ -58,14 +60,15 @@ def list_census_datasets(
             return cached_data
 
     # Query API
-    base_url = "https://censusmapper.ca/api/v1"
     params = {"api_key": api_key, "format": "json"}
 
     try:
         if not quiet:
             print("Querying CensusMapper API for available datasets...")
 
-        response = requests.get(f"{base_url}/list_datasets", params=params, timeout=30)
+        response = requests.get(
+            f"{CENSUSMAPPER_API_URL}/list_datasets", params=params, timeout=30
+        )
         response.raise_for_status()
 
         data = response.json()
@@ -161,8 +164,6 @@ def dataset_attribution(datasets):
     >>> for attr in attributions:
     ...     print(attr)
     """
-    import re
-
     # Get all datasets info
     datasets_df = list_census_datasets(quiet=True)
 

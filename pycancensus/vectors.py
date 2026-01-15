@@ -2,11 +2,14 @@
 Functions for working with census vectors (variables).
 """
 
-import requests
-import pandas as pd
+import io
+import warnings
 from typing import Optional
 
-from .settings import get_api_key
+import pandas as pd
+import requests
+
+from .settings import get_api_key, CENSUSMAPPER_API_URL
 from .utils import validate_dataset
 from .cache import get_cached_data, cache_data
 
@@ -45,8 +48,6 @@ def label_vectors(x):
     >>> labels = pc.label_vectors(data)
     >>> print(labels)
     """
-    import warnings
-
     if hasattr(x, "attrs") and "census_vectors" in x.attrs:
         # Convert stored dict back to DataFrame
         metadata = x.attrs["census_vectors"]
@@ -125,7 +126,6 @@ def list_census_vectors(
             return cached_data
 
     # Query API using the correct endpoint (discovered via diagnostics)
-    base_url = "https://censusmapper.ca/api/v1"
     params = {"dataset": dataset, "api_key": api_key}
 
     try:
@@ -134,13 +134,11 @@ def list_census_vectors(
 
         # Use the working CSV endpoint instead of the non-working JSON endpoint
         response = requests.get(
-            f"{base_url}/vector_info.csv", params=params, timeout=30
+            f"{CENSUSMAPPER_API_URL}/vector_info.csv", params=params, timeout=30
         )
         response.raise_for_status()
 
         # Parse CSV response
-        import io
-
         df = pd.read_csv(io.StringIO(response.text))
 
         # Rename columns to match expected format

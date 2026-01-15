@@ -1,9 +1,11 @@
 """Vector hierarchy navigation functions for pycancensus."""
 
+import re
+import warnings
+from typing import Dict, List, Optional, Union
+
 import pandas as pd
 import requests
-from typing import List, Dict, Optional, Union
-import warnings
 
 from .settings import get_api_key
 from .utils import validate_dataset
@@ -242,8 +244,6 @@ def find_census_vectors(
         )
     elif search_type == "regex":
         # Regex search
-        import re
-
         try:
             pattern = re.compile(query, re.IGNORECASE)
             mask = all_vectors["label"].str.contains(pattern, na=False) | all_vectors[
@@ -287,8 +287,6 @@ def _infer_parent_vector(vector: str, all_vectors: pd.DataFrame) -> Optional[Dic
     This is a fallback when explicit parent_vector column is not available.
     """
     # Extract the numeric part of the vector ID
-    import re
-
     match = re.match(r"(v_[A-Z0-9]+_)(\d+)", vector)
     if not match:
         return None
@@ -321,8 +319,6 @@ def _infer_child_vectors(vector: str, all_vectors: pd.DataFrame) -> List[Dict]:
 
     This is a fallback when explicit parent_vector column is not available.
     """
-    import re
-
     match = re.match(r"(v_[A-Z0-9]+_)(\d+)", vector)
     if not match:
         return []

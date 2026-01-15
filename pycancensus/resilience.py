@@ -1,11 +1,13 @@
 """Production-grade resilience features for pycancensus API calls."""
 
-import time
-import requests
+import atexit
 import logging
-from typing import Dict, Any, Optional, Callable
-from functools import wraps
 import random
+import time
+from functools import wraps
+from typing import Any, Callable, Dict, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -329,6 +331,4 @@ def close_session():
 
 
 # Cleanup on module exit
-import atexit
-
 atexit.register(close_session)

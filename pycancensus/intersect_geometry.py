@@ -2,16 +2,17 @@
 Functions for finding census regions that intersect with geometries.
 """
 
-import json
 import hashlib
-import requests
-import geopandas as gpd
-from shapely.geometry import Point, Polygon, MultiPolygon
-from shapely.ops import unary_union
-from typing import Union, List, Dict, Any, Optional
+import json
 import warnings
+from typing import Any, Dict, List, Optional, Union
 
-from .settings import get_api_key
+import geopandas as gpd
+import requests
+from shapely.geometry import MultiPolygon, Point, Polygon
+from shapely.ops import unary_union
+
+from .settings import get_api_key, CENSUSMAPPER_API_URL
 from .cache import get_cached_data, cache_data
 from .utils import validate_dataset
 
@@ -176,8 +177,6 @@ def _query_intersecting_geometries_api(
     dataset: str, level: str, geojson_str: str, area: float, api_key: str, quiet: bool
 ) -> Any:
     """Query the CensusMapper API for intersecting geometries."""
-    base_url = "https://censusmapper.ca/api/v1/"
-
     # Prepare request data
     request_data = {
         "dataset": dataset,
@@ -192,7 +191,7 @@ def _query_intersecting_geometries_api(
 
     try:
         response = requests.post(
-            f"{base_url}intersecting_geographies",
+            f"{CENSUSMAPPER_API_URL}/intersecting_geographies",
             json=request_data,
             headers={"Accept": "application/json"},
             timeout=60,

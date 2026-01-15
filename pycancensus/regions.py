@@ -2,11 +2,13 @@
 Functions for working with census regions.
 """
 
-import requests
-import pandas as pd
+import io
 from typing import Optional
 
-from .settings import get_api_key
+import pandas as pd
+import requests
+
+from .settings import get_api_key, CENSUSMAPPER_DATA_URL
 from .utils import validate_dataset
 from .cache import get_cached_data, cache_data
 
@@ -69,8 +71,7 @@ def list_census_regions(
             return cached_data
 
     # Query API using the correct endpoint (same as R cancensus)
-    # R cancensus uses: https://censusmapper.ca/data_sets/{dataset}/place_names.csv
-    url = f"https://censusmapper.ca/data_sets/{dataset}/place_names.csv"
+    url = f"{CENSUSMAPPER_DATA_URL}/{dataset}/place_names.csv"
 
     try:
         if not quiet:
@@ -81,8 +82,6 @@ def list_census_regions(
         response.raise_for_status()
 
         # Parse CSV response
-        import io
-
         df = pd.read_csv(io.StringIO(response.text))
 
         # Map column names to match expected output format
