@@ -13,6 +13,7 @@ import geopandas as gpd
 import requests
 
 from .settings import get_api_key, get_cache_path, CENSUSMAPPER_API_URL
+from .resilience import get_session
 from .cache import get_cached_data, cache_data
 from .utils import validate_dataset, validate_level, process_regions
 from .progress import show_request_preview, create_progress_for_request
@@ -183,10 +184,9 @@ def get_census(
             for key, value in geo_request_data.items():
                 geo_multipart_data[key] = (None, value)
 
-            geo_response = requests.post(
-                f"{base_url}geo.geojson", files=geo_multipart_data, timeout=30
+            geo_response = get_session().post(
+                f"{base_url}geo.geojson", files=geo_multipart_data
             )
-            geo_response.raise_for_status()
             geo_data = geo_response.json()
             geo_result = _process_geojson_response(geo_data, None, labels)  # No vectors
 
@@ -195,10 +195,9 @@ def get_census(
             for key, value in request_data.items():
                 csv_multipart_data[key] = (None, value)
 
-            csv_response = requests.post(
-                f"{base_url}data.csv", files=csv_multipart_data, timeout=30
+            csv_response = get_session().post(
+                f"{base_url}data.csv", files=csv_multipart_data
             )
-            csv_response.raise_for_status()
             csv_result = _process_csv_response(csv_response.text, vectors, labels)
 
             # 3. Merge the results
@@ -261,10 +260,7 @@ def get_census(
             for key, value in request_data.items():
                 multipart_data[key] = (None, value)
 
-            response = requests.post(
-                f"{base_url}{endpoint}", files=multipart_data, timeout=30
-            )
-            response.raise_for_status()
+            response = get_session().post(f"{base_url}{endpoint}", files=multipart_data)
 
             # Process the response data based on endpoint
             if geo_format == "geopandas":
