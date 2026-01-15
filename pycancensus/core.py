@@ -171,80 +171,10 @@ def get_census(
         # Handle geo_format='geopandas' with vectors using hybrid approach
         if geo_format == "geopandas" and vectors:
             # The geo.geojson endpoint doesn't properly return vector data
-            # So we need to fetch geometry and data separately, then merge
-
-            # 1. Fetch geometry data
-            geo_request_data = request_data.copy()
-            if "vectors" in geo_request_data:
-                del geo_request_data["vectors"]  # Remove vectors for geo request
-            if resolution == "high":
-                geo_request_data["resolution"] = "high"
-
-            geo_multipart_data = {}
-            for key, value in geo_request_data.items():
-                geo_multipart_data[key] = (None, value)
-
-            geo_response = get_session().post(
-                f"{base_url}geo.geojson", files=geo_multipart_data
+            # Use dedicated function to fetch and merge geo + vector data
+            result = _fetch_census_with_geometry_and_vectors(
+                base_url, request_data, resolution, vectors, labels
             )
-            geo_data = geo_response.json()
-            geo_result = _process_geojson_response(geo_data, None, labels)  # No vectors
-
-            # 2. Fetch vector data using CSV endpoint
-            csv_multipart_data = {}
-            for key, value in request_data.items():
-                csv_multipart_data[key] = (None, value)
-
-            csv_response = get_session().post(
-                f"{base_url}data.csv", files=csv_multipart_data
-            )
-            csv_result = _process_csv_response(csv_response.text, vectors, labels)
-
-            # 3. Merge the results
-            # Use a common identifier to merge - typically 'GeoUID' from CSV and 'id' from GeoJSON
-            merge_key_csv = None
-            merge_key_geo = None
-
-            # Find the appropriate merge keys
-            for potential_key in ["GeoUID", "id", "rgid"]:
-                if potential_key in csv_result.columns:
-                    merge_key_csv = potential_key
-                    break
-
-            for potential_key in ["id", "rgid", "GeoUID"]:
-                if potential_key in geo_result.columns:
-                    merge_key_geo = potential_key
-                    break
-
-            if merge_key_csv and merge_key_geo:
-                # Merge on the identifier
-                # Keep all columns from geo_result, add vector columns from csv_result
-                vector_columns = [
-                    col for col in csv_result.columns if col.startswith("v_")
-                ]
-                merge_columns = [merge_key_csv] + vector_columns
-
-                result = geo_result.merge(
-                    csv_result[merge_columns],
-                    left_on=merge_key_geo,
-                    right_on=merge_key_csv,
-                    how="left",
-                )
-
-                # Drop the duplicate merge key if it was added
-                if merge_key_csv != merge_key_geo and merge_key_csv in result.columns:
-                    result = result.drop(columns=[merge_key_csv])
-
-            else:
-                # Fallback: assume same order and merge by index
-                vector_columns = [
-                    col for col in csv_result.columns if col.startswith("v_")
-                ]
-                for col in vector_columns:
-                    if len(csv_result) == len(geo_result):
-                        geo_result[col] = csv_result[col].values
-                result = geo_result
-
         else:
             # Standard single-endpoint approach
             if geo_format == "geopandas":
@@ -306,6 +236,124 @@ def _generate_cache_key(dataset, regions, vectors, level, geo_format):
 
     # Create a hash of the parameters
     return hashlib.md5(params_str.encode()).hexdigest()
+
+
+def _fetch_census_with_geometry_and_vectors(
+    base_url: str,
+    request_data: dict,
+    resolution: str,
+    vectors: List[str],
+    labels: str,
+) -> gpd.GeoDataFrame:
+    """
+    Fetch census data with both geometry and vector data.
+
+    The CensusMapper geo.geojson endpoint doesn't properly return vector data,
+    so this function makes separate calls to geo.geojson and data.csv endpoints,
+    then merges the results on geographic identifier.
+
+    Parameters
+    ----------
+    base_url : str
+        The API base URL (e.g., "https://censusmapper.ca/api/v1/").
+    request_data : dict
+        The base request parameters (dataset, level, api_key, regions, etc.).
+    resolution : str
+        Resolution of geographic data - 'simplified' or 'high'.
+    vectors : list of str
+        Vector codes to retrieve.
+    labels : str
+        Label format - 'detailed' or 'short'.
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        GeoDataFrame with geometry and vector data merged.
+    """
+    # 1. Fetch geometry data (without vectors)
+    geo_request_data = request_data.copy()
+    if "vectors" in geo_request_data:
+        del geo_request_data["vectors"]
+    if resolution == "high":
+        geo_request_data["resolution"] = "high"
+
+    geo_multipart_data = {key: (None, value) for key, value in geo_request_data.items()}
+    geo_response = get_session().post(
+        f"{base_url}geo.geojson", files=geo_multipart_data
+    )
+    geo_data = geo_response.json()
+    geo_result = _process_geojson_response(geo_data, None, labels)
+
+    # 2. Fetch vector data using CSV endpoint
+    csv_multipart_data = {key: (None, value) for key, value in request_data.items()}
+    csv_response = get_session().post(f"{base_url}data.csv", files=csv_multipart_data)
+    csv_result = _process_csv_response(csv_response.text, vectors, labels)
+
+    # 3. Merge the results on geographic identifier
+    return _merge_geo_and_csv_results(geo_result, csv_result)
+
+
+def _merge_geo_and_csv_results(
+    geo_result: gpd.GeoDataFrame,
+    csv_result: pd.DataFrame,
+) -> gpd.GeoDataFrame:
+    """
+    Merge GeoDataFrame with CSV DataFrame on geographic identifier.
+
+    Finds a common identifier column (GeoUID, id, or rgid) and merges
+    the vector columns from CSV onto the GeoDataFrame.
+
+    Parameters
+    ----------
+    geo_result : gpd.GeoDataFrame
+        GeoDataFrame with geometry data.
+    csv_result : pd.DataFrame
+        DataFrame with vector data.
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        Merged GeoDataFrame with geometry and vector columns.
+    """
+    # Find merge keys in each DataFrame
+    merge_key_csv = None
+    merge_key_geo = None
+
+    for potential_key in ["GeoUID", "id", "rgid"]:
+        if potential_key in csv_result.columns:
+            merge_key_csv = potential_key
+            break
+
+    for potential_key in ["id", "rgid", "GeoUID"]:
+        if potential_key in geo_result.columns:
+            merge_key_geo = potential_key
+            break
+
+    if merge_key_csv and merge_key_geo:
+        # Merge on identifier - keep geo columns, add vector columns from CSV
+        vector_columns = [col for col in csv_result.columns if col.startswith("v_")]
+        merge_columns = [merge_key_csv] + vector_columns
+
+        result = geo_result.merge(
+            csv_result[merge_columns],
+            left_on=merge_key_geo,
+            right_on=merge_key_csv,
+            how="left",
+        )
+
+        # Drop duplicate merge key if names differ
+        if merge_key_csv != merge_key_geo and merge_key_csv in result.columns:
+            result = result.drop(columns=[merge_key_csv])
+
+    else:
+        # Fallback: assume same row order and merge by index
+        vector_columns = [col for col in csv_result.columns if col.startswith("v_")]
+        result = geo_result.copy()
+        for col in vector_columns:
+            if len(csv_result) == len(geo_result):
+                result[col] = csv_result[col].values
+
+    return result
 
 
 def _extract_vector_metadata(df, vectors, labels):

@@ -359,6 +359,68 @@ class TestDataProcessing:
         assert pd.isna(geo_result["pop"].iloc[1])
 
 
+class TestGeoVectorsMerge:
+    """Test geo+vectors merge functionality."""
+
+    def test_merge_on_geoid_key(self):
+        """Test merging geo and CSV results on GeoUID/id key."""
+        from pycancensus.core import _merge_geo_and_csv_results
+
+        # Create mock GeoDataFrame
+        geo_result = gpd.GeoDataFrame(
+            {
+                "id": ["001", "002", "003"],
+                "name": ["Region A", "Region B", "Region C"],
+                "geometry": [None, None, None],
+            }
+        )
+
+        # Create mock CSV result
+        csv_result = pd.DataFrame(
+            {
+                "GeoUID": ["001", "002", "003"],
+                "v_CA21_1": [100, 200, 300],
+                "v_CA21_2": [50, 60, 70],
+            }
+        )
+
+        result = _merge_geo_and_csv_results(geo_result, csv_result)
+
+        # Should have vector columns merged
+        assert "v_CA21_1" in result.columns
+        assert "v_CA21_2" in result.columns
+        assert list(result["v_CA21_1"]) == [100, 200, 300]
+
+        # Should have geo columns preserved
+        assert "name" in result.columns
+        assert "geometry" in result.columns
+
+    def test_merge_fallback_by_index(self):
+        """Test fallback merge by index when no common key found."""
+        from pycancensus.core import _merge_geo_and_csv_results
+
+        # Create mock data without common keys
+        geo_result = gpd.GeoDataFrame(
+            {
+                "custom_id": ["A", "B"],
+                "geometry": [None, None],
+            }
+        )
+
+        csv_result = pd.DataFrame(
+            {
+                "other_id": ["X", "Y"],
+                "v_CA21_1": [100, 200],
+            }
+        )
+
+        result = _merge_geo_and_csv_results(geo_result, csv_result)
+
+        # Should still merge by index
+        assert "v_CA21_1" in result.columns
+        assert list(result["v_CA21_1"]) == [100, 200]
+
+
 class TestCache:
     """Test caching functionality."""
 
