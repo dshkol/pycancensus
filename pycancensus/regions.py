@@ -9,6 +9,7 @@ import pandas as pd
 import requests
 
 from .settings import get_api_key, CENSUSMAPPER_DATA_URL
+from .resilience import get_session
 from .utils import validate_dataset
 from .cache import get_cached_data, cache_data
 
@@ -78,8 +79,7 @@ def list_census_regions(
             print(f"Querying CensusMapper API for {dataset} regions...")
 
         # The endpoint returns gzip-compressed CSV data
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
+        response = get_session().get(url)
 
         # Parse CSV response
         df = pd.read_csv(io.StringIO(response.text))

@@ -13,6 +13,7 @@ from shapely.geometry import MultiPolygon, Point, Polygon
 from shapely.ops import unary_union
 
 from .settings import get_api_key, CENSUSMAPPER_API_URL
+from .resilience import get_session
 from .cache import get_cached_data, cache_data
 from .utils import validate_dataset
 
@@ -190,13 +191,12 @@ def _query_intersecting_geometries_api(
         print("Querying CensusMapper API for intersecting geometries...")
 
     try:
-        response = requests.post(
+        response = get_session().post(
             f"{CENSUSMAPPER_API_URL}/intersecting_geographies",
             json=request_data,
             headers={"Accept": "application/json"},
-            timeout=60,
+            timeout=60,  # Longer timeout for geometry operations
         )
-        response.raise_for_status()
 
         result = response.json()
 

@@ -9,6 +9,7 @@ import pandas as pd
 import requests
 
 from .settings import get_api_key, CENSUSMAPPER_API_URL
+from .resilience import get_session
 from .cache import get_cached_data, cache_data
 
 
@@ -66,10 +67,9 @@ def list_census_datasets(
         if not quiet:
             print("Querying CensusMapper API for available datasets...")
 
-        response = requests.get(
-            f"{CENSUSMAPPER_API_URL}/list_datasets", params=params, timeout=30
+        response = get_session().get(
+            f"{CENSUSMAPPER_API_URL}/list_datasets", params=params
         )
-        response.raise_for_status()
 
         data = response.json()
 
