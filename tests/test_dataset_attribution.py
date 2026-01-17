@@ -9,8 +9,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import pycancensus as pc
 
-# Import R bridge for cross-validation
-from tests.cross_validation.utils.r_python_bridge import RPythonBridge
+# Import R bridge for cross-validation (optional - only available locally)
+try:
+    from tests.cross_validation.utils.r_python_bridge import RPythonBridge
+
+    R_AVAILABLE = True
+except ImportError:
+    R_AVAILABLE = False
+    RPythonBridge = None
 
 
 class TestDatasetAttribution:
