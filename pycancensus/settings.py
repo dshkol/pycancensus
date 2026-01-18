@@ -12,6 +12,10 @@ from typing import Optional, Dict, Any
 _API_KEY = None
 _CACHE_PATH = None
 
+# API configuration
+CENSUSMAPPER_API_URL = "https://censusmapper.ca/api/v1"
+CENSUSMAPPER_DATA_URL = "https://censusmapper.ca/data_sets"
+
 
 # Config file location
 def _get_config_path() -> Path:

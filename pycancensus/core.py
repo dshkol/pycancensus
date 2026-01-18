@@ -2,14 +2,17 @@
 Core functionality for accessing Canadian Census data through the CensusMapper API.
 """
 
-import os
-import requests
+import hashlib
+import io
+import json
+import warnings
+from typing import Dict, List, Optional, Union
+
 import pandas as pd
 import geopandas as gpd
-from typing import Dict, List, Optional, Union
-import warnings
+import requests
 
-from .settings import get_api_key, get_cache_path
+from .settings import get_api_key, get_cache_path, CENSUSMAPPER_API_URL
 from .cache import get_cached_data, cache_data
 from .utils import validate_dataset, validate_level, process_regions
 from .progress import show_request_preview, create_progress_for_request
@@ -122,10 +125,9 @@ def get_census(
             return cached_data
 
     # Build API request exactly like the R package
-    base_url = "https://censusmapper.ca/api/v1/"
+    base_url = f"{CENSUSMAPPER_API_URL}/"
 
     # Format parameters exactly like the R package
-    import json
 
     # Convert regions to JSON format exactly like R package: jsonlite::toJSON(lapply(regions, as.character))
     # R package ALWAYS puts region values in arrays - this was the key missing piece!
@@ -303,8 +305,6 @@ def get_census(
 
 def _generate_cache_key(dataset, regions, vectors, level, geo_format):
     """Generate a cache key for the given parameters."""
-    import hashlib
-
     # Create a string representation of the parameters
     params_str = f"{dataset}_{regions}_{vectors}_{level}_{geo_format}"
 
@@ -355,15 +355,13 @@ def _extract_vector_metadata(df, vectors, labels):
 
         # Store metadata as dict to avoid pandas attrs comparison bug
         # Convert DataFrame to list of dicts for storage
-        df.attrs["census_vectors"] = metadata_df.to_dict(orient='records')
+        df.attrs["census_vectors"] = metadata_df.to_dict(orient="records")
 
     return df
 
 
 def _process_csv_response(csv_text, vectors, labels):
     """Process CSV API response into a pandas DataFrame."""
-    import io
-
     # Read all columns as strings initially (like R package)
     df = pd.read_csv(io.StringIO(csv_text), dtype=str, encoding="utf-8")
 
