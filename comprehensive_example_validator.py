@@ -427,7 +427,7 @@ def main():
         result <- get_census(
           dataset = 'CA21',
           regions = list(CSD = "5915022"),
-          vectors = c(),
+          vectors = c("v_CA21_1"),
           level = 'CSD',
           quiet = TRUE
         )
@@ -435,7 +435,7 @@ def main():
         python_func=lambda: pc.get_census(
             dataset='CA21',
             regions={'CSD': '5915022'},
-            vectors=None,  # Fix: use None instead of []
+            vectors=['v_CA21_1'],  # API requires at least one vector
             level='CSD',
             quiet=True
         )

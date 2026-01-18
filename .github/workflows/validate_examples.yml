@@ -36,27 +36,30 @@ jobs:
 
     - name: Check validation results
       run: |
-        # Extract pass/fail counts from output
+        # Extract pass/fail/skip counts from output
         PASSED=$(grep "✅ PASSED:" validation_output.txt | awk '{print $3}')
         FAILED=$(grep "❌ FAILED:" validation_output.txt | awk '{print $3}')
+        SKIPPED=$(grep "⏭️  SKIPPED:" validation_output.txt | awk '{print $3}')
         TOTAL=$(grep "📝 TOTAL:" validation_output.txt | awk '{print $3}')
 
         echo "Validation Results:"
         echo "  Passed: $PASSED"
         echo "  Failed: $FAILED"
+        echo "  Skipped: $SKIPPED"
         echo "  Total: $TOTAL"
 
-        # Calculate pass rate
-        PASS_RATE=$(echo "scale=2; $PASSED * 100 / ($TOTAL - 1)" | bc)
-        echo "  Pass Rate: ${PASS_RATE}%"
-
-        # Fail if pass rate drops below 90%
-        if (( $(echo "$PASS_RATE < 90" | bc -l) )); then
-          echo "❌ Pass rate below 90%!"
+        # Fail if there are any actual failures
+        if [ "$FAILED" -gt 0 ]; then
+          echo "❌ $FAILED test(s) failed!"
           exit 1
         fi
 
-        echo "✅ Validation passed with ${PASS_RATE}% success rate"
+        # If all tests passed or were skipped (no failures), success
+        if [ "$PASSED" -gt 0 ]; then
+          echo "✅ All $PASSED executed tests passed ($SKIPPED skipped)"
+        else
+          echo "⚠️  All tests skipped (R not available) - no failures"
+        fi
 
     - name: Upload validation report
       if: always()
