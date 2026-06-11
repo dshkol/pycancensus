@@ -10,6 +10,7 @@ import pandas as pd
 import requests
 
 from .settings import get_api_key, CENSUSMAPPER_API_URL
+from .resilience import get_session
 from .utils import validate_dataset
 from .cache import get_cached_data, cache_data
 
@@ -133,10 +134,9 @@ def list_census_vectors(
             print(f"🔍 Querying CensusMapper API for {dataset} vectors...")
 
         # Use the working CSV endpoint instead of the non-working JSON endpoint
-        response = requests.get(
-            f"{CENSUSMAPPER_API_URL}/vector_info.csv", params=params, timeout=30
+        response = get_session().get(
+            f"{CENSUSMAPPER_API_URL}/vector_info.csv", params=params
         )
-        response.raise_for_status()
 
         # Parse CSV response
         df = pd.read_csv(io.StringIO(response.text))

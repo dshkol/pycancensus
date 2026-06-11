@@ -169,7 +169,6 @@ PUBLISHING.md
 # Development/testing scripts (keep local only)
 test_notebook_concepts.py
 validate_feature_parity.py
-comprehensive_example_validator.py
 
 # Testing artifacts (keep local only)
 validation_outputs/
