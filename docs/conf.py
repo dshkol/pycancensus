@@ -55,8 +55,14 @@ templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # -- Options for HTML output ------------------------------------------------
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'furo'
 html_static_path = ['_static']
+html_title = 'pycancensus'
+html_theme_options = {
+    'source_repository': 'https://github.com/dshkol/pycancensus/',
+    'source_branch': 'main',
+    'source_directory': 'docs/',
+}
 
 # -- Extension configuration -------------------------------------------------
 

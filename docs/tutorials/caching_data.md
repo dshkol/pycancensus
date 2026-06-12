@@ -202,13 +202,16 @@ except Exception as e:
 
 ## Controlling Cache Behavior
 
-### Bypassing Cache
+### Refreshing the Cache
 
-You can force fresh data by using the `use_cache=False` parameter:
+You can force fresh data by using the `use_cache=False` parameter. This
+skips reading any locally cached copy and re-downloads — and, matching the
+R cancensus behavior, the fresh result **replaces** the cached entry, so
+subsequent calls with `use_cache=True` see the updated data:
 
 ```{code-cell} python
 try:
-    # Force fresh data (bypass cache)
+    # Force a fresh download; the cache entry is refreshed afterwards
     print("Forcing fresh data download...")
 
     fresh_data = pc.get_census(
@@ -216,15 +219,23 @@ try:
         regions={"PR": "59"},  # British Columbia
         vectors=["v_CA21_1"],
         level="PR",
-        use_cache=False  # Force fresh download
+        use_cache=False  # Skip stale cache, re-download, refresh cache
     )
 
     print(f"Fresh data retrieved: {len(fresh_data)} records")
 
 except Exception as e:
-    print(f"Error bypassing cache: {e}")
+    print(f"Error refreshing cache: {e}")
     print("This requires API access")
 ```
+
+### In-Memory Session Cache
+
+Metadata lists (`list_census_vectors()`, `list_census_regions()`) are
+additionally held in an in-memory session cache: repeated calls within the
+same Python session skip the disk entirely, which makes hierarchy
+navigation and variable search snappy. The session cache is invalidated
+automatically by `remove_from_cache()` and `clear_cache()`.
 
 ### Cache Behavior
 
@@ -237,10 +248,44 @@ print("• Vector lists and region lists are cached")
 print("• Geographic boundaries are cached")
 print("• API responses include metadata for freshness")
 print("\nTo force refresh:")
-print("• Use use_cache=False parameter in get_census()")
+print("• Use use_cache=False in get_census() (re-downloads AND updates the cache)")
 print("• Remove specific cache entries with remove_from_cache()")
 print("• Clear entire cache with clear_cache()")
 ```
+
+## Recalled Data
+
+Statistics Canada occasionally *recalls* published census data after
+discovering errors. CensusMapper tracks these recalls, and pycancensus
+checks your local cache against them: each cached `get_census()` result
+records the server's data version, and reading recalled data from the
+cache produces a warning.
+
+You can inspect and clean recalled data explicitly:
+
+```{code-cell} python
+try:
+    # List locally cached entries that have been recalled by StatCan
+    recalled = pc.list_recalled_cached_data()
+    if recalled is None:
+        print("Recall database unavailable")
+    elif recalled.empty:
+        print("No recalled data in the local cache")
+    else:
+        print(f"{len(recalled)} recalled cache entries:")
+        print(recalled[["cache_key", "dataset", "level"]])
+
+    # Remove them (no-op if there are none)
+    pc.remove_recalled_cached_data()
+
+except Exception as e:
+    print(f"Error checking recalls: {e}")
+```
+
+Data downloaded *after* a recall reflects the corrected values and is not
+flagged. Cache entries written by pycancensus versions before 0.2.0 have
+no version metadata and are skipped by the recall check — clear them with
+`clear_cache()` if you want full coverage.
 
 ## Cache Maintenance
 
@@ -493,10 +538,12 @@ This tutorial covered comprehensive cache management for pycancensus:
 **Available Cache Functions:**
 - `get_cache_path()` - Get current cache directory
 - `set_cache_path(path)` - Set custom cache directory
-- `list_cache()` - List cached items
+- `list_cache()` - List cached items (with dataset/vector/version metadata)
 - `remove_from_cache(key)` - Remove specific cache entry
 - `clear_cache()` - Clear all cached data
-- `use_cache=False` - Bypass cache in get_census()
+- `list_recalled_cached_data()` - List cached data recalled by StatCan
+- `remove_recalled_cached_data()` - Remove recalled cached data
+- `use_cache=False` - Skip stale cache in get_census() and refresh it
 
 ### Best Practices Summary:
 1. **Let cache work automatically** - Default behavior is optimized
