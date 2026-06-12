@@ -113,10 +113,10 @@ def get_census(
         )
 
     # Check cache first
+    cache_key = _generate_cache_key(
+        dataset, processed_regions, vectors, level, geo_format
+    )
     if use_cache:
-        cache_key = _generate_cache_key(
-            dataset, processed_regions, vectors, level, geo_format
-        )
         cached_data = get_cached_data(cache_key)
         if cached_data is not None:
             if not quiet:
@@ -201,9 +201,10 @@ def get_census(
                 # data.csv returns CSV
                 result = _process_csv_response(response.text, vectors, labels)
 
-        # Cache the result
-        if use_cache:
-            cache_data(cache_key, result)
+        # Cache the result. use_cache=False means "don't read stale data",
+        # not "don't cache": a forced refresh still updates the cache,
+        # matching the R package
+        cache_data(cache_key, result)
 
         # Finish progress indicator
         if progress:
@@ -505,6 +506,14 @@ def _process_csv_response(csv_text, vectors, labels):
 
     # Fix column names by removing trailing/leading spaces (critical fix for API compatibility)
     df.columns = df.columns.str.strip()
+
+    # A 200 response can still carry an error payload instead of census
+    # data; never let that be processed (and cached) as data
+    if "GeoUID" not in df.columns:
+        raise ValueError(
+            f"Invalid API response, expected census CSV data but got: "
+            f"{csv_text[:200]!r}"
+        )
 
     # Apply shared normalization
     return _normalize_census_dataframe(df, vectors, labels)
