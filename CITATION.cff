@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use pycancensus in your research, please cite it as below."
+title: "pycancensus: access, retrieve, and work with Canadian Census data and geography in Python"
+type: software
+authors:
+  - family-names: Shkolnik
+    given-names: Dmitry
+    email: shkolnikd@gmail.com
+  - family-names: von Bergmann
+    given-names: Jens
+    email: jens@mountainmath.ca
+version: 0.2.0
+date-released: 2026-06-12
+license: MIT
+repository-code: "https://github.com/dshkol/pycancensus"
+url: "https://pycancensus.readthedocs.io/"
+keywords:
+  - census
+  - canada
+  - statistics-canada
+  - censusmapper
+  - gis
+  - demographics

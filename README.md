@@ -225,9 +225,21 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 - Submitting pull requests
 - Reporting issues
 
+## Citing pycancensus
+
+If you use pycancensus in your research, please cite it (see
+[CITATION.cff](CITATION.cff), or use GitHub's "Cite this repository" button):
+
+> Shkolnik, D. and J. von Bergmann (2026). pycancensus: access, retrieve,
+> and work with Canadian Census data and geography in Python. v0.2.0.
+> https://github.com/dshkol/pycancensus
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+The license covers the pycancensus code; census **data** retrieved with it
+is subject to the Statistics Canada Open Licence — see the attribution
+requirements below.
 
 ## Related Packages
 
@@ -235,7 +247,9 @@ This package is explicitly a python port of the R [cancensus](https://github.com
 
 ## Statistics Canada Attribution
 
-Subject to the Statistics Canada Open Data License Agreement, licensed products using Statistics Canada data should employ the following acknowledgement of source:
+Subject to the Statistics Canada Open Data License Agreement, licensed products using Statistics Canada data should employ the following acknowledgement of source.
+pycancensus can generate the correct attribution text for the datasets you
+used: `pc.dataset_attribution(["CA16", "CA21"])`.
 
 **Acknowledgment of Source**
 
