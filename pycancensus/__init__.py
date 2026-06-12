@@ -31,6 +31,7 @@ from .settings import (
 from .geometry import get_census_geometry
 from .cache import list_cache, remove_from_cache, clear_cache
 from .hierarchy import parent_census_vectors, child_census_vectors
+from .vector_viz import visualize_vector_hierarchy
 from .intersect_geometry import get_intersecting_geometries
 
 __all__ = [
@@ -55,5 +56,6 @@ __all__ = [
     "parent_census_vectors",
     "child_census_vectors",
     "find_census_vectors",
+    "visualize_vector_hierarchy",
     "get_intersecting_geometries",
 ]
