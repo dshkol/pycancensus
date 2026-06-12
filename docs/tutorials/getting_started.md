@@ -17,8 +17,9 @@ This tutorial demonstrates the enhanced pycancensus functionality with clear hie
 
 ## Key Features Demonstrated:
 - **list_census_vectors()** - Browse all available data variables
-- **Vector Hierarchies** - Navigate parent-child relationships
+- **Vector Hierarchies** - Navigate parent-child relationships, with ASCII tree visualization
 - **find_census_vectors()** - Exact, semantic, and keyword search
+- **Region Selection** - Filter region lists and de-duplicate ambiguous names
 - **Real Data Retrieval** - Get actual census data
 
 ```{note}
@@ -146,7 +147,67 @@ except Exception as e:
     print(f"Error searching vectors: {e}")
 ```
 
-## 4. Real Data Retrieval
+Semantic search tolerates misspellings and loose phrasing — useful when you
+don't know the exact census terminology:
+
+```{code-cell} python
+try:
+    # "comute" is misspelled on purpose; semantic search still finds it
+    commute_vectors = find_census_vectors('comute duration', 'CA16',
+                                          query_type='semantic', quiet=True)
+    print(f"Found {len(commute_vectors)} vectors despite the typo")
+    display(commute_vectors[['vector', 'label']].head(3))
+
+except Exception as e:
+    print(f"Error in semantic search: {e}")
+```
+
+You can also visualize where a vector sits in its hierarchy as an ASCII tree:
+
+```{code-cell} python
+from pycancensus import visualize_vector_hierarchy
+
+try:
+    # Low-income status hierarchy from the 2016 census
+    visualize_vector_hierarchy("v_CA16_2510", quiet=True)
+
+except Exception as e:
+    print(f"Error visualizing hierarchy: {e}")
+```
+
+## 4. Selecting Regions
+
+Region lists can be filtered like any DataFrame and passed straight to
+`get_census()` with `as_census_region_list()`. When municipality names are
+ambiguous (there are two Langleys in metro Vancouver),
+`add_unique_names_to_region_list()` de-duplicates them:
+
+```{code-cell} python
+from pycancensus import (
+    list_census_regions,
+    as_census_region_list,
+    add_unique_names_to_region_list,
+)
+
+try:
+    regions = list_census_regions("CA21", quiet=True)
+    metro_van = regions[(regions["level"] == "CSD") &
+                        (regions["CMA_UID"] == "59933")]
+
+    named = add_unique_names_to_region_list(metro_van)
+    print("De-duplicated names for duplicated municipalities:")
+    display(named.loc[named["name"].duplicated(keep=False),
+                      ["region", "name", "Name"]])
+
+    # Convert the selection into a get_census() regions argument
+    region_arg = as_census_region_list(metro_van.head(5))
+    print(f"\nRegions argument for get_census(): {region_arg}")
+
+except Exception as e:
+    print(f"Error selecting regions: {e}")
+```
+
+## 5. Real Data Retrieval
 
 Finally, let's get actual census data using our hierarchy vectors:
 
@@ -186,8 +247,9 @@ except Exception as e:
 1. **list_census_vectors()** - Browse 7,709+ available variables with explicit parent-child relationships
 2. **Hierarchy Navigation** - Navigate through income hierarchies from main categories to detailed brackets
 3. **parent_census_vectors()** & **child_census_vectors()** - Navigate up and down the hierarchy
-4. **find_census_vectors()** - Exact, semantic, and keyword search modes 
-5. **Real Data** - Actual census data retrieved and analyzed
+4. **find_census_vectors()** & **visualize_vector_hierarchy()** - Exact, semantic, and keyword search; ASCII hierarchy trees
+5. **as_census_region_list()** & **add_unique_names_to_region_list()** - Region selection helpers
+6. **Real Data** - Actual census data retrieved and analyzed
 
 **Key Improvement**: Unlike previous versions, these hierarchy functions now work with **clear, well-defined parent-child relationships** in the census data structure.
 
