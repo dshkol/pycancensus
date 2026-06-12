@@ -125,11 +125,22 @@ Add support for national-level census data
 ### Code Guidelines
 
 **General Principles:**
+- **R compatibility is the north star**: function names, signatures, and
+  behavior mirror the R [cancensus](https://github.com/mountainMath/cancensus)
+  package; check the R implementation before changing ported behavior, and
+  cross-validate results against it where feasible
+- All HTTP goes through `get_session()` from `resilience.py` — never raw `requests`
+- Identifier columns (region IDs, UIDs) are strings, never numeric
+- When adding a public function: export it in `__init__.py`'s `__all__`, add
+  it to `docs/api/index.rst`, and commit the autosummary stub
 - Write clear, readable code
 - Add docstrings to all public functions and classes
 - Follow existing code patterns and conventions
 - Keep functions focused and single-purpose
 - Add type hints where appropriate
+
+See [AGENTS.md](AGENTS.md) for a fuller architecture map and known gotchas
+(written for AI coding agents, equally useful for humans).
 
 **Docstring Format:**
 
