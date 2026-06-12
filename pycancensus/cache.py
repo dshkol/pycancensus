@@ -3,6 +3,7 @@ Caching functionality for pycancensus.
 """
 
 import os
+import warnings
 import pickle
 import hashlib
 from pathlib import Path
@@ -94,7 +95,7 @@ def cache_data(cache_key: str, data: Any) -> None:
         with open(cache_file, "wb") as f:
             pickle.dump(data, f)
     except Exception as e:
-        print(f"Warning: Failed to cache data: {e}")
+        warnings.warn(f"Failed to cache data: {e}")
 
 
 def list_cache() -> pd.DataFrame:
