@@ -1,23 +1,28 @@
 # pycancensus
 
+[![PyPI](https://img.shields.io/pypi/v/pycancensus.svg)](https://pypi.org/project/pycancensus/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/dshkol/pycancensus/actions/workflows/ci.yml/badge.svg)](https://github.com/dshkol/pycancensus/actions/workflows/ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/pycancensus/badge/?version=latest)](https://pycancensus.readthedocs.io/en/latest/?badge=latest)
-[![Tests](https://img.shields.io/badge/tests-passing-green.svg)](tests/)
-[![R Equivalence](https://img.shields.io/badge/R%20equivalence-verified-blue.svg)](tests/cross_validation/)
 
 Access, retrieve, and work with Canadian Census data and geography.
 
 **pycancensus** is a Python package that provides integrated, convenient, and uniform access to Canadian Census data and geography retrieved using the CensusMapper API. This package produces analysis-ready tidy DataFrames and spatial data in multiple formats, with full equivalence to the R cancensus library.
 
-## Recent Updates
+## What's New in 0.2.0
 
-- **Full R Library Equivalence**: Verified 100% data compatibility with R cancensus
-- **Enhanced API Reliability**: Production-grade error handling and retry logic
-- **Vector Hierarchy Functions**: Navigate census variable relationships like R
-- **Improved Data Quality**: Fixed column naming and data processing issues
-- **Comprehensive Testing**: 450+ integration tests covering real-world scenarios
-- **National-Level Support**: Added level='C' for Canada-wide baseline comparisons
+Synchronized with R cancensus 0.6.1 — see [CHANGELOG.md](CHANGELOG.md) for details:
+
+- **Full hierarchy traversal**: `parent/child_census_vectors()` return complete
+  ancestor/descendant trees, verified identical to R
+- **Semantic variable search**: typo-tolerant `find_census_vectors(query_type="semantic")`,
+  now with the R-parity signature `(query, dataset, ...)` (breaking change)
+- **StatCan recall detection**: cached data is checked against published data recalls
+- **New helpers**: `visualize_vector_hierarchy()`, `as_census_region_list()`,
+  `add_unique_names_to_region_list()`, `explore_census_vectors()/regions()`
+- **Reliability**: retries honor Retry-After; error payloads can no longer poison
+  the cache; in-memory session cache for metadata
 
 ## Features
 
@@ -104,6 +109,7 @@ The documentation includes:
 - **[Example Gallery](https://pycancensus.readthedocs.io/en/latest/auto_examples/index.html)** - Real-world usage examples
 - **[API Reference](https://pycancensus.readthedocs.io/en/latest/api/index.html)** - Complete function documentation
 - **[R to Python Migration Guide](https://pycancensus.readthedocs.io/en/latest/migration.html)** - For R cancensus users
+- **[LLM Usage Guide](https://pycancensus.readthedocs.io/en/latest/llm_usage.html)** - For AI agents using the library ([llms.txt](https://pycancensus.readthedocs.io/en/latest/llms.txt))
 
 ## Quick Start
 
@@ -154,8 +160,9 @@ population_base = "v_CA21_1"
 breakdowns = pc.child_census_vectors(population_base, dataset="CA21")
 parent_categories = pc.parent_census_vectors(population_base, dataset="CA21")
 
-# Enhanced search with fuzzy matching
-income_vectors = pc.find_census_vectors("CA21", "median household income")
+# Enhanced search: exact, semantic (typo-tolerant), or keyword
+income_vectors = pc.find_census_vectors("median household income", "CA21",
+                                        query_type="semantic")
 ```
 
 ## Error Handling & Resilience
@@ -179,21 +186,22 @@ except CensusAPIError as e:
 
 pycancensus includes comprehensive testing to ensure reliability and R equivalence:
 
+### Unit Testing
+- **114 unit tests** covering retry behavior, hierarchy traversal, search modes,
+  caching semantics, recall detection, and region helpers
+- CI runs on Python 3.8-3.11 with formatting and lint checks
+
 ### Cross-Validation with R cancensus
-- **4/4 tests passing** with full data equivalence
-- Identical results for vector listing, data retrieval, and multi-region queries  
-- Automated testing against R cancensus library
+- Hierarchy traversal, search modes, and name de-duplication verified
+  **byte-identical** to R cancensus 0.6.1 on live data
+- Automated example validator runs the R documentation examples against
+  the Python implementation on every PR
 
-### Integration Testing
-- **6 real-world scenarios** covering typical data analysis workflows
-- Provincial population analysis, demographic breakdowns, income analysis
-- Vector hierarchy navigation, time series comparisons, geographic analysis
-- Performance benchmarking with large datasets
-
-### Robustness Testing  
-- Error handling with invalid regions/vectors
-- Large dataset performance testing
-- API resilience and retry logic validation
+### Integration & Robustness Testing
+- Real-world scenarios: demographic breakdowns, time series comparisons,
+  geographic analysis with live API calls
+- Error handling with invalid regions/vectors, large-dataset performance,
+  retry logic validation
 
 ```bash
 # Run the test suite
