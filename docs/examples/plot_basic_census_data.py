@@ -154,7 +154,7 @@ except Exception as e:
 print("\nVector Hierarchy Navigation:")
 try:
     # Find vectors using enhanced search
-    income_vectors = pc.find_census_vectors("CA21", "income")
+    income_vectors = pc.find_census_vectors("income", "CA21", query_type="keyword")
     print(f"Found {len(income_vectors)} income-related vectors")
     
     # Navigate vector hierarchies using household income as example

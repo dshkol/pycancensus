@@ -339,7 +339,7 @@ def main():
         r_code="""
         result <- find_census_vectors('Oji-cree', dataset = 'CA16', query_type = 'exact')
         """,
-        python_func=lambda: pc.find_census_vectors('CA16', 'Oji-cree', search_type='exact')
+        python_func=lambda: pc.find_census_vectors('Oji-cree', 'CA16', query_type='exact')
     )
 
     validator.validate_example(
@@ -347,7 +347,7 @@ def main():
         r_code="""
         result <- find_census_vectors('commuting duration', dataset = 'CA11', query_type = 'keyword')
         """,
-        python_func=lambda: pc.find_census_vectors('CA11', 'commuting duration', search_type='keyword')
+        python_func=lambda: pc.find_census_vectors('commuting duration', 'CA11', query_type='keyword')
     )
 
     validator.validate_example(
@@ -355,7 +355,7 @@ def main():
         r_code="""
         result <- find_census_vectors('after tax income', dataset = 'CA16', query_type = 'keyword')
         """,
-        python_func=lambda: pc.find_census_vectors('CA16', 'after tax income', search_type='keyword')
+        python_func=lambda: pc.find_census_vectors('after tax income', 'CA16', query_type='keyword')
     )
 
     # ========================================================================

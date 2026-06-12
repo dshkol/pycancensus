@@ -18,7 +18,7 @@ This tutorial demonstrates the enhanced pycancensus functionality with clear hie
 ## Key Features Demonstrated:
 - **list_census_vectors()** - Browse all available data variables
 - **Vector Hierarchies** - Navigate parent-child relationships
-- **find_census_vectors()** - Smart search functionality
+- **find_census_vectors()** - Exact, semantic, and keyword search
 - **Real Data Retrieval** - Get actual census data
 
 ```{note}
@@ -131,15 +131,16 @@ except Exception as e:
 
 ## 3. Enhanced Vector Search
 
-The `find_census_vectors()` function provides smart search with relevance scoring:
+The `find_census_vectors()` function supports exact, semantic, and keyword search
+(matching the R cancensus package):
 
 ```{code-cell} python
 try:
     # Search for income-related vectors
-    income_vectors = find_census_vectors('CA21', 'income')
+    income_vectors = find_census_vectors('income', 'CA21', query_type='keyword')
     print(f"Found {len(income_vectors)} income-related vectors")
-    print(f"\nTop income vectors (sorted by relevance):")
-    display(income_vectors[['vector', 'label', 'relevance_score']].head(3))
+    print(f"\nTop income vectors:")
+    display(income_vectors[['vector', 'label']].head(3))
     
 except Exception as e:
     print(f"Error searching vectors: {e}")
@@ -185,7 +186,7 @@ except Exception as e:
 1. **list_census_vectors()** - Browse 7,709+ available variables with explicit parent-child relationships
 2. **Hierarchy Navigation** - Navigate through income hierarchies from main categories to detailed brackets
 3. **parent_census_vectors()** & **child_census_vectors()** - Navigate up and down the hierarchy
-4. **find_census_vectors()** - Smart search with relevance scoring 
+4. **find_census_vectors()** - Exact, semantic, and keyword search modes 
 5. **Real Data** - Actual census data retrieved and analyzed
 
 **Key Improvement**: Unlike previous versions, these hierarchy functions now work with **clear, well-defined parent-child relationships** in the census data structure.
