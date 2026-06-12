@@ -516,3 +516,22 @@ def _keyword_search(
         return other_res
     print(f"Showing top {len(top_res)} results only")
     return top_res
+
+
+def explore_census_vectors(dataset: str = "CA16") -> None:
+    """
+    Open the interactive CensusMapper variable explorer in a browser.
+
+    Parameters
+    ----------
+    dataset : str, default "CA16"
+        The dataset to explore vectors for.
+    """
+    import webbrowser
+
+    dataset = validate_dataset(dataset)
+    print(
+        "Opening interactive census variable explorer at censusmapper.ca/api "
+        "in the browser"
+    )
+    webbrowser.open(f"https://censusmapper.ca/api/{dataset}#api_variable")
