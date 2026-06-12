@@ -12,12 +12,19 @@ __author__ = "Dmitry Shkolnik"
 __email__ = "shkolnikd@gmail.com"
 
 from .core import get_census
-from .regions import list_census_regions, search_census_regions
+from .regions import (
+    list_census_regions,
+    search_census_regions,
+    as_census_region_list,
+    add_unique_names_to_region_list,
+    explore_census_regions,
+)
 from .vectors import (
     list_census_vectors,
     search_census_vectors,
     find_census_vectors,
     label_vectors,
+    explore_census_vectors,
 )
 from .datasets import list_census_datasets, dataset_attribution
 from .settings import (
@@ -57,5 +64,9 @@ __all__ = [
     "child_census_vectors",
     "find_census_vectors",
     "visualize_vector_hierarchy",
+    "as_census_region_list",
+    "add_unique_names_to_region_list",
+    "explore_census_regions",
+    "explore_census_vectors",
     "get_intersecting_geometries",
 ]
