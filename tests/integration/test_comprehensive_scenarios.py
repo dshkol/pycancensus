@@ -205,7 +205,7 @@ class TestComprehensiveScenarios:
         print(f"   🔽 Found {len(children)} child vectors for {base_vector}")
 
         # Test vector search
-        housing_vectors = pc.find_census_vectors("CA21", "dwelling")
+        housing_vectors = pc.find_census_vectors("dwelling", "CA21", query_type="keyword")
         print(f"   🏠 Found {len(housing_vectors)} dwelling-related vectors")
 
         # Validate hierarchy functions work
