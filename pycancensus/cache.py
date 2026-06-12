@@ -3,6 +3,7 @@ Caching functionality for pycancensus.
 """
 
 import os
+import json
 import warnings
 import pickle
 import hashlib
@@ -75,9 +76,9 @@ def get_cached_data(cache_key: str) -> Optional[Any]:
     return None
 
 
-def cache_data(cache_key: str, data: Any) -> None:
+def cache_data(cache_key: str, data: Any, metadata: Optional[dict] = None) -> None:
     """
-    Cache data to disk.
+    Cache data to disk, optionally with a metadata sidecar.
 
     Parameters
     ----------
@@ -85,6 +86,10 @@ def cache_data(cache_key: str, data: Any) -> None:
         Unique identifier for the data.
     data : Any
         Data to cache.
+    metadata : dict, optional
+        Request metadata (dataset, level, vectors, data version, ...) stored
+        alongside the data in a .meta.json sidecar. Used for recalled-data
+        detection.
     """
     cache_path = Path(get_cache_path())
     cache_path.mkdir(parents=True, exist_ok=True)
@@ -94,8 +99,24 @@ def cache_data(cache_key: str, data: Any) -> None:
     try:
         with open(cache_file, "wb") as f:
             pickle.dump(data, f)
+        if metadata is not None:
+            meta_file = cache_path / f"{cache_key}.meta.json"
+            with open(meta_file, "w") as f:
+                json.dump(metadata, f)
     except Exception as e:
         warnings.warn(f"Failed to cache data: {e}")
+
+
+def get_cache_metadata(cache_key: str) -> Optional[dict]:
+    """Read the metadata sidecar for a cached entry, if present."""
+    meta_file = Path(get_cache_path()) / f"{cache_key}.meta.json"
+    if meta_file.exists():
+        try:
+            with open(meta_file) as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
 
 
 def list_cache() -> pd.DataFrame:
@@ -130,15 +151,18 @@ def list_cache() -> pd.DataFrame:
     for cache_file in cache_path.glob("*.pkl"):
         try:
             stat = cache_file.stat()
-            cache_files.append(
-                {
-                    "cache_key": cache_file.stem,
-                    "file_path": str(cache_file),
-                    "size_mb": round(stat.st_size / (1024 * 1024), 2),
-                    "created": pd.Timestamp.fromtimestamp(stat.st_ctime),
-                    "modified": pd.Timestamp.fromtimestamp(stat.st_mtime),
-                }
-            )
+            entry = {
+                "cache_key": cache_file.stem,
+                "file_path": str(cache_file),
+                "size_mb": round(stat.st_size / (1024 * 1024), 2),
+                "created": pd.Timestamp.fromtimestamp(stat.st_ctime),
+                "modified": pd.Timestamp.fromtimestamp(stat.st_mtime),
+            }
+            metadata = get_cache_metadata(cache_file.stem)
+            if metadata is not None:
+                for key in ("dataset", "level", "vectors", "version", "geo_version"):
+                    entry[key] = metadata.get(key)
+            cache_files.append(entry)
         except Exception:
             continue
 
@@ -183,10 +207,11 @@ def remove_from_cache(
     removed_count = 0
 
     if all_cache:
-        # Remove all .pkl files
+        # Remove all .pkl files (and their metadata sidecars)
         for cache_file in cache_path.glob("*.pkl"):
             try:
                 cache_file.unlink()
+                (cache_path / f"{cache_file.stem}.meta.json").unlink(missing_ok=True)
                 removed_count += 1
             except Exception as e:
                 print(f"Warning: Failed to remove {cache_file}: {e}")
@@ -200,6 +225,7 @@ def remove_from_cache(
             if cache_file.exists():
                 try:
                     cache_file.unlink()
+                    (cache_path / f"{cache_key}.meta.json").unlink(missing_ok=True)
                     removed_count += 1
                     print(f"Removed cache: {cache_key}")
                 except Exception as e:
