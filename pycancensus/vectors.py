@@ -3,6 +3,7 @@ Functions for working with census vectors (variables).
 """
 
 import io
+import re
 import warnings
 from typing import Optional
 
@@ -231,10 +232,15 @@ def search_census_vectors(
         dataset=dataset, use_cache=use_cache, quiet=quiet, api_key=api_key
     )
 
-    # Search in both label and details columns (case-insensitive)
-    label_mask = vectors_df["label"].str.contains(search_term, case=False, na=False)
+    # Search in both label and details columns (case-insensitive, literal —
+    # regex metacharacters in queries like "income ($)" match literally)
+    label_mask = vectors_df["label"].str.contains(
+        search_term, case=False, na=False, regex=False
+    )
     details_mask = (
-        vectors_df["details"].str.contains(search_term, case=False, na=False)
+        vectors_df["details"].str.contains(
+            search_term, case=False, na=False, regex=False
+        )
         if "details" in vectors_df.columns
         else pd.Series([False] * len(vectors_df))
     )
@@ -256,30 +262,37 @@ def search_census_vectors(
 
 
 def find_census_vectors(
-    search_term: str,
+    query: str,
     dataset: str,
-    type_filter: Optional[str] = None,
+    type: str = "all",
+    query_type: str = "exact",
     interactive: bool = False,
     use_cache: bool = True,
     quiet: bool = False,
     api_key: Optional[str] = None,
 ) -> pd.DataFrame:
     """
-    Find census vectors with enhanced search capabilities.
+    Find census vectors using exact, semantic, or keyword search.
 
-    This is an alias for search_census_vectors with potential for future
-    enhancement with fuzzy matching and interactive selection.
+    Mirrors R cancensus's find_census_vectors(). Exact search matches the
+    query literally against vector details. Semantic search tolerates
+    spelling and phrasing differences via n-gram edit-distance matching.
+    Keyword search splits the query into words and ranks vectors by how
+    many of them match.
 
     Parameters
     ----------
-    search_term : str
-        Term to search for in vector labels or details.
+    query : str
+        Search query.
     dataset : str
         The dataset to search in (e.g., 'CA16').
-    type_filter : str, optional
-        Filter by vector type ('Total', 'Male', 'Female').
+    type : str, default "all"
+        Filter by vector type: 'all', 'total', 'male', or 'female'.
+    query_type : str, default "exact"
+        One of 'exact', 'semantic', or 'keyword'.
     interactive : bool, default False
-        If True, provides interactive selection (future enhancement).
+        For keyword search: prompt to show lower-precision matches beyond
+        the top-ranked results.
     use_cache : bool, default True
         If True, uses cached vector list if available.
     quiet : bool, default False
@@ -290,17 +303,216 @@ def find_census_vectors(
     Returns
     -------
     pd.DataFrame
-        Filtered DataFrame of vectors matching the search term.
-    """
-    if interactive:
-        # TODO: Implement interactive vector selection
-        print("Interactive mode not yet implemented. Using standard search.")
+        Matching vectors with columns vector, type, label, details.
 
-    return search_census_vectors(
-        search_term=search_term,
-        dataset=dataset,
-        type_filter=type_filter,
-        use_cache=use_cache,
-        quiet=quiet,
-        api_key=api_key,
+    Examples
+    --------
+    >>> import pycancensus as pc
+    >>> pc.find_census_vectors('Oji-cree', dataset='CA16', type='total')
+    >>> pc.find_census_vectors('after tax income', 'CA16', query_type='semantic')
+    >>> pc.find_census_vectors('commute duration', 'CA16', query_type='keyword')
+    """
+    type = type.lower()
+    query_type = query_type.lower()
+
+    if type not in ("total", "male", "female", "all"):
+        raise ValueError(
+            "Type must be one of 'all', 'total', 'female', or 'male'. "
+            "See help(find_census_vectors) for more details."
+        )
+    if query_type not in ("exact", "semantic", "keyword"):
+        raise ValueError(
+            "Query type must be one of 'exact', 'semantic', or 'keyword'. "
+            "See help(find_census_vectors) for more details."
+        )
+
+    vector_list = list_census_vectors(
+        dataset, use_cache=use_cache, quiet=True, api_key=api_key
+    )[["vector", "type", "label", "details"]].copy()
+    # Strip the common "... Census; 100% data;" prefix from details, like R
+    vector_list["details"] = vector_list["details"].str.replace(
+        r"^(.*)Census; |100% data; ", "", regex=True
     )
+
+    if type in ("total", "male", "female"):
+        vector_list = vector_list[vector_list["type"] == type.title()]
+
+    if query_type == "exact":
+        mask = vector_list["details"].str.contains(
+            query, case=False, na=False, regex=False
+        )
+        result = vector_list[mask]
+        if result.empty:
+            warnings.warn(
+                "No exact matches found. Please check spelling and try again "
+                "or consider using semantic or keyword search.\n"
+                "See help(find_census_vectors) for more details."
+            )
+        return result
+    elif query_type == "semantic":
+        return _semantic_search(query, vector_list, quiet=quiet)
+    else:  # keyword
+        return _keyword_search(query, vector_list, interactive=interactive)
+
+
+def _bounded_levenshtein(a: str, b: str, max_dist: int = 2) -> int:
+    """Levenshtein distance, returning max_dist + 1 once it exceeds max_dist."""
+    if abs(len(a) - len(b)) > max_dist:
+        return max_dist + 1
+    if a == b:
+        return 0
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        current = [i]
+        row_min = i
+        for j, cb in enumerate(b, start=1):
+            cost = min(
+                previous[j] + 1,  # deletion
+                current[j - 1] + 1,  # insertion
+                previous[j - 1] + (ca != cb),  # substitution
+            )
+            current.append(cost)
+            row_min = min(row_min, cost)
+        if row_min > max_dist:
+            return max_dist + 1
+        previous = current
+    return previous[-1]
+
+
+def _clean_text(text: str) -> str:
+    """Lowercase, replace punctuation with spaces, collapse whitespace."""
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", text.lower())).strip()
+
+
+def _semantic_search(
+    query: str, vector_list: pd.DataFrame, quiet: bool = False
+) -> pd.DataFrame:
+    """N-gram edit-distance search, mirroring R cancensus semantic_search()."""
+    details = vector_list["details"].fillna("")
+    clean_details = [_clean_text(d) for d in details]
+
+    query_words = [w for w in re.split(r"[^a-z]+", query.lower()) if w]
+    word_count = max(len(query_words), 1)
+
+    # Build word-count-length n-grams (suffix n-grams at sentence ends)
+    ngram_counts: dict = {}
+    for sentence in clean_details:
+        words = sentence.split()
+        if not words:
+            continue
+        if word_count == 1:
+            grams = words
+        else:
+            grams = [" ".join(words[i : i + word_count]) for i in range(len(words))]
+        for gram in grams:
+            ngram_counts[gram] = ngram_counts.get(gram, 0) + 1
+    if not ngram_counts:
+        raise ValueError("No census vector details available to search against.")
+
+    # Most frequent n-grams first, matching R's table() ordering
+    ordered_ngrams = [g for g, _ in sorted(ngram_counts.items(), key=lambda kv: -kv[1])]
+
+    # Best match for the full query plus each individual query word
+    revised_query = [query.lower()] + query.lower().split()
+    best_ngrams = []
+    overall_min = None
+    for term in revised_query:
+        term_best_dist = None
+        term_best_gram = None
+        for gram in ordered_ngrams:
+            # Levenshtein is bounded below by the length difference; skip
+            # candidates that can never come within the match threshold
+            if abs(len(gram) - len(term)) > 2:
+                continue
+            dist = _bounded_levenshtein(term, gram, max_dist=2)
+            if term_best_dist is None or dist < term_best_dist:
+                term_best_dist = dist
+                term_best_gram = gram
+                if dist == 0:
+                    break
+        if term_best_dist is not None and term_best_dist <= 2:
+            if term_best_gram not in best_ngrams:
+                best_ngrams.append(term_best_gram)
+        if term_best_dist is not None:
+            overall_min = (
+                term_best_dist
+                if overall_min is None
+                else min(overall_min, term_best_dist)
+            )
+
+    if not best_ngrams:
+        warnings.warn(
+            "No close matches found. Please check spelling and try again or "
+            "consider using keyword search instead.\n"
+            "See help(find_census_vectors) for more details."
+        )
+        return vector_list.iloc[0:0]
+
+    pattern = "|".join(re.escape(g) for g in best_ngrams)
+    matched = [
+        bool(re.search(pattern, clean, re.IGNORECASE)) for clean in clean_details
+    ]
+    result = vector_list[matched]
+    if len(result) > 1 and not quiet:
+        print("Multiple possible matches. Results ordered by closeness.")
+    return result
+
+
+def _keyword_search(
+    query: str, vector_list: pd.DataFrame, interactive: bool = False
+) -> pd.DataFrame:
+    """Unigram match-count search, mirroring R cancensus keyword_search()."""
+    details = vector_list["details"].fillna("")
+    # Deduplicate words within each detail string so repeated words don't
+    # inflate the match count
+    clean_details = []
+    for d in details:
+        words = _clean_text(d).split()
+        seen: set = set()
+        unique_words = [w for w in words if not (w in seen or seen.add(w))]
+        clean_details.append(" ".join(unique_words))
+
+    # Drop empty tokens (e.g. from queries starting with a digit); an empty
+    # regex alternative would match every vector
+    query_tokens = [t for t in re.split(r"[^a-z]+", query.lower()) if t]
+    if not query_tokens:
+        warnings.warn(
+            "No matches found. Please check spelling and try again or "
+            "consider using semantic search instead.\n"
+            "See help(find_census_vectors) for more details."
+        )
+        return vector_list.iloc[0:0]
+
+    word_pattern = re.compile(
+        r"\b(?:" + "|".join(re.escape(t) for t in query_tokens) + r")\b",
+        re.IGNORECASE,
+    )
+    n_matches = pd.Series(
+        [len(word_pattern.findall(clean)) for clean in clean_details],
+        index=vector_list.index,
+    )
+
+    if (n_matches == 0).all():
+        warnings.warn(
+            "No matches found. Please check spelling and try again or "
+            "consider using semantic search instead.\n"
+            "See help(find_census_vectors) for more details."
+        )
+        return vector_list.iloc[0:0]
+
+    max_matches = n_matches.max()
+    top_res = vector_list[n_matches == max_matches]
+    other_res = vector_list[(n_matches > 0) & (n_matches < max_matches)]
+
+    if other_res.empty or not interactive:
+        return top_res
+
+    print(top_res)
+    answer = input(
+        f"\nThere are {len(other_res)} additional keyword matches with less "
+        "precision. Show more? [y/N] "
+    )
+    if answer.strip().lower().startswith("y"):
+        return other_res
+    print(f"Showing top {len(top_res)} results only")
+    return top_res

@@ -1,6 +1,5 @@
 """Vector hierarchy navigation functions for pycancensus."""
 
-import re
 import warnings
 from typing import Dict, List, Optional, Union
 
@@ -206,91 +205,3 @@ def child_census_vectors(
         return pd.DataFrame(columns=all_vectors.columns)
 
     return all_vectors.set_index("vector").loc[seen].reset_index()[all_vectors.columns]
-
-
-def find_census_vectors(
-    dataset: str,
-    query: str,
-    search_type: str = "keyword",
-    use_cache: bool = True,
-    api_key: Optional[str] = None,
-) -> pd.DataFrame:
-    """
-    Enhanced vector search with multiple search types.
-
-    Parameters
-    ----------
-    dataset : str
-        Dataset to search in
-    query : str
-        Search query
-    search_type : str, default "keyword"
-        Type of search: "keyword", "exact", "regex"
-    use_cache : bool, default True
-        Whether to use cached data if available
-    api_key : str, optional
-        API key for CensusMapper API
-
-    Returns
-    -------
-    pd.DataFrame
-        Matching vectors with relevance information
-    """
-    dataset = validate_dataset(dataset)
-
-    # Get all vectors for the dataset
-    from .vectors import list_census_vectors
-
-    try:
-        all_vectors = list_census_vectors(dataset, use_cache=use_cache, api_key=api_key)
-    except Exception as e:
-        warnings.warn(f"Could not retrieve vector list for search: {e}")
-        return pd.DataFrame()
-
-    if all_vectors.empty:
-        return pd.DataFrame()
-
-    # Perform search based on type
-    query_lower = query.lower()
-
-    if search_type == "exact":
-        # Exact match in label or vector ID
-        mask = (all_vectors["vector"].str.lower() == query_lower) | (
-            all_vectors["label"].str.lower() == query_lower
-        )
-    elif search_type == "regex":
-        # Regex search
-        try:
-            pattern = re.compile(query, re.IGNORECASE)
-            mask = all_vectors["label"].str.contains(pattern, na=False) | all_vectors[
-                "vector"
-            ].str.contains(pattern, na=False)
-            if "details" in all_vectors.columns:
-                mask |= all_vectors["details"].str.contains(pattern, na=False)
-        except re.error:
-            warnings.warn(f"Invalid regex pattern: {query}")
-            return pd.DataFrame()
-    else:  # keyword search (default)
-        # Keyword search in label and details
-        mask = all_vectors["label"].str.contains(query, case=False, na=False)
-        if "details" in all_vectors.columns:
-            mask |= all_vectors["details"].str.contains(query, case=False, na=False)
-
-    result = all_vectors[mask].copy()
-
-    if not result.empty:
-        # Add relevance scoring
-        result["relevance_score"] = 0.0
-
-        # Higher score for matches in vector ID
-        vector_match = result["vector"].str.contains(query, case=False, na=False)
-        result.loc[vector_match, "relevance_score"] += 10
-
-        # Higher score for matches in label
-        label_match = result["label"].str.contains(query, case=False, na=False)
-        result.loc[label_match, "relevance_score"] += 5
-
-        # Sort by relevance score
-        result = result.sort_values("relevance_score", ascending=False)
-
-    return result
