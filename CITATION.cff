@@ -10,6 +10,7 @@ authors:
     given-names: Jens
     email: jens@mountainmath.ca
 version: 0.2.0
+doi: 10.5281/zenodo.20670029
 date-released: 2026-06-12
 license: MIT
 repository-code: "https://github.com/dshkol/pycancensus"

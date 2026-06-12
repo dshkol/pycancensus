@@ -1,6 +1,7 @@
 # pycancensus
 
 [![PyPI](https://img.shields.io/pypi/v/pycancensus.svg)](https://pypi.org/project/pycancensus/)
+[![DOI](https://zenodo.org/badge/998148421.svg)](https://doi.org/10.5281/zenodo.20670029)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![CI](https://github.com/dshkol/pycancensus/actions/workflows/ci.yml/badge.svg)](https://github.com/dshkol/pycancensus/actions/workflows/ci.yml)
