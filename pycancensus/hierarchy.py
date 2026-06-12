@@ -5,28 +5,72 @@ import warnings
 from typing import Dict, List, Optional, Union
 
 import pandas as pd
-import requests
 
-from .settings import get_api_key
 from .utils import validate_dataset
-from .cache import get_cached_data, cache_data
+
+
+def _clean_vector_input(vectors: Union[str, List[str], pd.DataFrame]) -> List[str]:
+    """Normalize vector input (string, list, or DataFrame) to a list of IDs."""
+    if isinstance(vectors, pd.DataFrame):
+        if "vector" not in vectors.columns:
+            raise ValueError("DataFrame input must have a 'vector' column")
+        return vectors["vector"].tolist()
+    if isinstance(vectors, str):
+        return [vectors]
+    return list(vectors)
+
+
+def _dataset_from_vectors(vector_ids: List[str]) -> str:
+    """Infer the dataset from vector IDs, requiring all to agree."""
+    try:
+        datasets = {v.split("_")[1] for v in vector_ids}
+    except (IndexError, AttributeError):
+        raise ValueError("Unable to determine dataset")
+    if len(datasets) != 1:
+        raise ValueError("Unable to determine dataset")
+    return datasets.pop()
+
+
+def _get_all_vectors(dataset, use_cache, api_key) -> Optional[pd.DataFrame]:
+    """Fetch the full vector list for a dataset, warning on failure."""
+    from .vectors import list_census_vectors
+
+    try:
+        all_vectors = list_census_vectors(
+            dataset, use_cache=use_cache, quiet=True, api_key=api_key
+        )
+    except ValueError:
+        # Configuration problems (e.g. missing API key) should surface
+        raise
+    except Exception as e:
+        warnings.warn(f"Could not retrieve vector list for hierarchy: {e}")
+        return None
+    if "parent_vector" not in all_vectors.columns:
+        warnings.warn("Vector list has no parent_vector column; cannot traverse")
+        return None
+    return all_vectors
 
 
 def parent_census_vectors(
-    vectors: Union[str, List[str]],
+    vectors: Union[str, List[str], pd.DataFrame],
     dataset: Optional[str] = None,
     use_cache: bool = True,
     api_key: Optional[str] = None,
 ) -> pd.DataFrame:
     """
-    Get parent vectors for given child vectors.
+    Get all parent vectors up the hierarchy for given vectors.
+
+    Traverses the full vector hierarchy upward (matching R cancensus),
+    returning every ancestor of the input vectors, not just direct parents.
 
     Parameters
     ----------
-    vectors : str or list of str
-        Vector IDs to find parents for
+    vectors : str, list of str, or pd.DataFrame
+        Vector IDs to find parents for, or a DataFrame as returned by
+        list_census_vectors() with a 'vector' column
     dataset : str, optional
-        Dataset to search in. If None, inferred from vectors
+        Dataset to search in. If None, inferred from vectors; all input
+        vectors must then belong to the same dataset
     use_cache : bool, default True
         Whether to use cached data if available
     api_key : str, optional
@@ -35,161 +79,133 @@ def parent_census_vectors(
     Returns
     -------
     pd.DataFrame
-        DataFrame with parent vector information
+        DataFrame with ancestor vector information, in discovery order
+        (direct parents first, then grandparents, and so on)
     """
-    # Ensure vectors is a list
-    if isinstance(vectors, str):
-        vectors = [vectors]
-
-    if not vectors:
+    vector_ids = _clean_vector_input(vectors)
+    if not vector_ids:
         return pd.DataFrame()
 
-    # Infer dataset if not provided
     if dataset is None:
-        try:
-            dataset = vectors[0].split("_")[1]
-        except (IndexError, AttributeError):
-            raise ValueError("Dataset must be specified or inferable from vectors")
-
+        dataset = _dataset_from_vectors(vector_ids)
     dataset = validate_dataset(dataset)
 
-    if api_key is None:
-        api_key = get_api_key()
-        if api_key is None:
-            raise ValueError(
-                "API key required. Set with set_api_key() or CANCENSUS_API_KEY "
-                "environment variable."
-            )
-
-    # Check cache first
-    cache_key = f"parent_vectors_{dataset}_{'-'.join(sorted(vectors))}"
-    if use_cache:
-        cached_data = get_cached_data(cache_key)
-        if cached_data is not None:
-            return cached_data
-
-    # Get all vectors for the dataset to build hierarchy
-    from .vectors import list_census_vectors
-
-    try:
-        all_vectors = list_census_vectors(dataset, use_cache=use_cache, api_key=api_key)
-    except Exception as e:
-        warnings.warn(f"Could not retrieve vector list for hierarchy: {e}")
+    all_vectors = _get_all_vectors(dataset, use_cache, api_key)
+    if all_vectors is None:
         return pd.DataFrame()
 
-    # Filter for parent vectors
-    parent_vectors = []
+    # Hash-based BFS upward over plain dicts/sets, matching the R package's
+    # traversal: `seen` accumulates ancestors in discovery order.
+    parent_of = dict(zip(all_vectors["vector"], all_vectors["parent_vector"]))
+    known = set(parent_of)
 
-    for vector in vectors:
-        if "parent_vector" in all_vectors.columns:
-            # Find direct parents
-            matches = all_vectors[all_vectors["vector"] == vector]
-            if not matches.empty and pd.notna(matches.iloc[0]["parent_vector"]):
-                parent_id = matches.iloc[0]["parent_vector"]
-                parent_info = all_vectors[all_vectors["vector"] == parent_id]
-                if not parent_info.empty:
-                    parent_vectors.append(parent_info.iloc[0].to_dict())
-        else:
-            # Fallback: try to infer parent from vector naming patterns
-            parent_candidate = _infer_parent_vector(vector, all_vectors)
-            if parent_candidate is not None:
-                parent_vectors.append(parent_candidate)
+    seen: List[str] = []
+    seen_set = set()
+    frontier = vector_ids
+    while frontier:
+        new_vecs = []
+        for v in frontier:
+            parent = parent_of.get(v)
+            if pd.notna(parent) and parent in known and parent not in seen_set:
+                seen_set.add(parent)
+                new_vecs.append(parent)
+        seen.extend(new_vecs)
+        frontier = new_vecs
 
-    result = pd.DataFrame(parent_vectors).drop_duplicates()
+    if not seen:
+        return pd.DataFrame(columns=all_vectors.columns)
 
-    # Cache the result
-    if use_cache and not result.empty:
-        cache_data(cache_key, result)
-
-    return result
+    return all_vectors.set_index("vector").loc[seen].reset_index()[all_vectors.columns]
 
 
 def child_census_vectors(
-    vectors: Union[str, List[str]],
+    vectors: Union[str, List[str], pd.DataFrame],
     dataset: Optional[str] = None,
     use_cache: bool = True,
     api_key: Optional[str] = None,
+    leaves_only: bool = False,
+    max_level: Optional[int] = None,
+    keep_parent: bool = False,
 ) -> pd.DataFrame:
     """
-    Get child vectors for given parent vectors.
+    Get all child vectors down the hierarchy for given vectors.
+
+    Traverses the full vector hierarchy downward (matching R cancensus),
+    returning every descendant of the input vectors, not just direct
+    children.
 
     Parameters
     ----------
-    vectors : str or list of str
-        Parent vector IDs
+    vectors : str, list of str, or pd.DataFrame
+        Parent vector IDs, or a DataFrame as returned by
+        list_census_vectors() with a 'vector' column
     dataset : str, optional
-        Dataset to search in
+        Dataset to search in. If None, inferred from vectors; all input
+        vectors must then belong to the same dataset
     use_cache : bool, default True
         Whether to use cached data if available
     api_key : str, optional
         API key for CensusMapper API
+    leaves_only : bool, default False
+        Only return terminal vectors that themselves have no children
+    max_level : int, optional
+        Maximum depth to traverse. Default traverses the full hierarchy;
+        max_level=1 returns only direct children
+    keep_parent : bool, default False
+        Also include the input vectors in the result
 
     Returns
     -------
     pd.DataFrame
-        DataFrame with child vector information
+        DataFrame with descendant vector information, in discovery order
+        (direct children first, then grandchildren, and so on)
     """
-    # Ensure vectors is a list
-    if isinstance(vectors, str):
-        vectors = [vectors]
-
-    if not vectors:
+    vector_ids = _clean_vector_input(vectors)
+    if not vector_ids:
         return pd.DataFrame()
 
-    # Infer dataset if not provided
     if dataset is None:
-        try:
-            dataset = vectors[0].split("_")[1]
-        except (IndexError, AttributeError):
-            raise ValueError("Dataset must be specified or inferable from vectors")
-
+        dataset = _dataset_from_vectors(vector_ids)
     dataset = validate_dataset(dataset)
 
-    if api_key is None:
-        api_key = get_api_key()
-        if api_key is None:
-            raise ValueError(
-                "API key required. Set with set_api_key() or CANCENSUS_API_KEY "
-                "environment variable."
-            )
-
-    # Check cache first
-    cache_key = f"child_vectors_{dataset}_{'-'.join(sorted(vectors))}"
-    if use_cache:
-        cached_data = get_cached_data(cache_key)
-        if cached_data is not None:
-            return cached_data
-
-    # Get all vectors for the dataset to build hierarchy
-    from .vectors import list_census_vectors
-
-    try:
-        all_vectors = list_census_vectors(dataset, use_cache=use_cache, api_key=api_key)
-    except Exception as e:
-        warnings.warn(f"Could not retrieve vector list for hierarchy: {e}")
+    all_vectors = _get_all_vectors(dataset, use_cache, api_key)
+    if all_vectors is None:
         return pd.DataFrame()
 
-    # Filter for child vectors
-    child_vectors = []
+    # Hash-based BFS downward, matching the R package's traversal.
+    children_of: Dict[str, List[str]] = {}
+    for child, parent in zip(all_vectors["vector"], all_vectors["parent_vector"]):
+        if pd.notna(parent):
+            children_of.setdefault(parent, []).append(child)
 
-    for vector in vectors:
-        if "parent_vector" in all_vectors.columns:
-            # Find direct children
-            children = all_vectors[all_vectors["parent_vector"] == vector]
-            for _, child in children.iterrows():
-                child_vectors.append(child.to_dict())
-        else:
-            # Fallback: try to infer children from vector naming patterns
-            children_candidates = _infer_child_vectors(vector, all_vectors)
-            child_vectors.extend(children_candidates)
+    seen: List[str] = []
+    seen_set = set()
+    frontier = vector_ids
+    level = 0
+    while frontier and (max_level is None or level < max_level):
+        level += 1
+        new_vecs = []
+        for v in frontier:
+            for child in children_of.get(v, []):
+                if child not in seen_set:
+                    seen_set.add(child)
+                    new_vecs.append(child)
+        if not new_vecs:
+            break
+        seen.extend(new_vecs)
+        frontier = new_vecs
 
-    result = pd.DataFrame(child_vectors).drop_duplicates()
+    if leaves_only:
+        seen = [v for v in seen if v not in children_of]
 
-    # Cache the result
-    if use_cache and not result.empty:
-        cache_data(cache_key, result)
+    if keep_parent:
+        valid_inputs = set(all_vectors["vector"])
+        seen = [v for v in vector_ids if v in valid_inputs] + seen
 
-    return result
+    if not seen:
+        return pd.DataFrame(columns=all_vectors.columns)
+
+    return all_vectors.set_index("vector").loc[seen].reset_index()[all_vectors.columns]
 
 
 def find_census_vectors(
@@ -278,81 +294,3 @@ def find_census_vectors(
         result = result.sort_values("relevance_score", ascending=False)
 
     return result
-
-
-def _infer_parent_vector(vector: str, all_vectors: pd.DataFrame) -> Optional[Dict]:
-    """
-    Infer parent vector from naming patterns.
-
-    This is a fallback when explicit parent_vector column is not available.
-    """
-    # Extract the numeric part of the vector ID
-    match = re.match(r"(v_[A-Z0-9]+_)(\d+)", vector)
-    if not match:
-        return None
-
-    prefix, number = match.groups()
-    vector_num = int(number)
-
-    # Look for parent patterns (shorter vector numbers often indicate parents)
-    for potential_parent_num in range(1, vector_num):
-        potential_parent = f"{prefix}{potential_parent_num}"
-        parent_match = all_vectors[all_vectors["vector"] == potential_parent]
-
-        if not parent_match.empty:
-            # Check if this could be a reasonable parent based on naming
-            parent_label = parent_match.iloc[0].get("label", "").lower()
-            current_label = (
-                all_vectors[all_vectors["vector"] == vector]["label"].iloc[0].lower()
-            )
-
-            # Simple heuristic: if parent label is contained in current label
-            if parent_label and parent_label in current_label:
-                return parent_match.iloc[0].to_dict()
-
-    return None
-
-
-def _infer_child_vectors(vector: str, all_vectors: pd.DataFrame) -> List[Dict]:
-    """
-    Infer child vectors from naming patterns.
-
-    This is a fallback when explicit parent_vector column is not available.
-    """
-    match = re.match(r"(v_[A-Z0-9]+_)(\d+)", vector)
-    if not match:
-        return []
-
-    prefix, number = match.groups()
-    vector_num = int(number)
-
-    # Get current vector label for comparison
-    current_match = all_vectors[all_vectors["vector"] == vector]
-    if current_match.empty:
-        return []
-
-    current_label = current_match.iloc[0].get("label", "").lower()
-    children = []
-
-    # Look for child patterns (higher vector numbers that might be children)
-    max_search = min(
-        vector_num + 1000,
-        all_vectors["vector"].str.extract(r"v_[A-Z0-9]+_(\d+)")[0].astype(int).max(),
-    )
-
-    for potential_child_num in range(vector_num + 1, max_search + 1):
-        potential_child = f"{prefix}{potential_child_num}"
-        child_match = all_vectors[all_vectors["vector"] == potential_child]
-
-        if not child_match.empty:
-            child_label = child_match.iloc[0].get("label", "").lower()
-
-            # Simple heuristic: if current label is contained in child label
-            if current_label and current_label in child_label:
-                children.append(child_match.iloc[0].to_dict())
-
-                # Limit to reasonable number of children
-                if len(children) >= 50:
-                    break
-
-    return children
