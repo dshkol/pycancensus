@@ -12,6 +12,39 @@ import geopandas as gpd
 
 from .settings import get_cache_path
 
+# In-memory session cache for metadata (vector and region lists). Sits in
+# front of the file cache so repeated calls within a session don't pay the
+# disk read + unpickle cost on every access.
+_session_cache: dict = {}
+
+
+def session_cache_get(cache_key: str) -> Optional[Any]:
+    """Get a value from the in-memory session cache."""
+    value = _session_cache.get(cache_key)
+    if isinstance(value, pd.DataFrame):
+        # Hand out copies so callers can't mutate the cached object
+        return value.copy()
+    return value
+
+
+def session_cache_set(cache_key: str, value: Any) -> Any:
+    """Store a value in the in-memory session cache."""
+    if isinstance(value, pd.DataFrame):
+        # Store a private copy so later caller mutations can't corrupt it
+        _session_cache[cache_key] = value.copy()
+    else:
+        _session_cache[cache_key] = value
+    return value
+
+
+def _session_cache_remove(cache_keys: Optional[List[str]] = None) -> None:
+    """Drop specific keys (or everything, if None) from the session cache."""
+    if cache_keys is None:
+        _session_cache.clear()
+    else:
+        for cache_key in cache_keys:
+            _session_cache.pop(cache_key, None)
+
 
 def get_cached_data(cache_key: str) -> Optional[Any]:
     """
@@ -134,6 +167,12 @@ def remove_from_cache(
     >>> # Remove all cache (use with caution!)
     >>> pc.remove_from_cache(all_cache=True)
     """
+    # Keep the in-memory session cache consistent with the file cache
+    if all_cache:
+        _session_cache_remove()
+    elif cache_keys:
+        _session_cache_remove(cache_keys)
+
     cache_path = Path(get_cache_path())
 
     if not cache_path.exists():
