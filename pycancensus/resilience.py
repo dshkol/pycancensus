@@ -141,7 +141,7 @@ class ResilientSession:
         pool_connections: int = 10,
         pool_maxsize: int = 20,
         max_retries: int = 3,
-        retry_on_status: tuple = (502, 503, 504),
+        retry_on_status: tuple = (408, 429),
         respect_retry_after: bool = True,
     ):
         """
@@ -156,7 +156,8 @@ class ResilientSession:
         max_retries : int
             Number of retries for failed requests
         retry_on_status : tuple
-            HTTP status codes to retry on
+            HTTP status codes to retry on, in addition to all 5xx responses
+            (which are always treated as transient)
         respect_retry_after : bool
             Whether to respect Retry-After headers
         """
@@ -190,29 +191,28 @@ class ResilientSession:
 
         self._last_request_time = time.time()
 
-    def _handle_rate_limit_response(self, response: requests.Response):
-        """Handle rate limit responses with Retry-After header."""
-        if response.status_code == 429:  # Too Many Requests
-            retry_after = response.headers.get("Retry-After")
+    def _is_retryable_status(self, status_code: int) -> bool:
+        """Check if a status code represents a transient, retryable error."""
+        return 500 <= status_code < 600 or status_code in self.retry_on_status
 
-            if retry_after and self.respect_retry_after:
-                try:
-                    retry_seconds = int(retry_after)
-                    raise RateLimitError(
-                        f"Rate limit exceeded",
-                        status_code=429,
-                        retry_after=retry_seconds,
-                        suggestion=f"Wait {retry_seconds} seconds before retrying",
-                    )
-                except ValueError:
-                    # Retry-After might be a date instead of seconds
-                    pass
+    def _retry_after_seconds(self, response: requests.Response) -> Optional[int]:
+        """Parse a numeric Retry-After header, if present and respected."""
+        if not self.respect_retry_after:
+            return None
+        retry_after = response.headers.get("Retry-After")
+        if retry_after is None:
+            return None
+        try:
+            seconds = int(float(retry_after))
+        except ValueError:
+            # Retry-After might be an HTTP date instead of seconds
+            return None
+        return seconds if seconds > 0 else None
 
-            raise RateLimitError(
-                "Rate limit exceeded",
-                status_code=429,
-                suggestion="Reduce request frequency or contact API provider",
-            )
+    def _backoff_delay(self, attempt: int) -> float:
+        """Exponential backoff (1, 2, 4, ... seconds) with jitter, capped at 60s."""
+        delay = min(2.0**attempt, 60.0)
+        return delay * (0.5 + random.random() * 0.5)
 
     def _create_appropriate_exception(
         self, response: requests.Response
@@ -223,7 +223,12 @@ class ResilientSession:
         elif response.status_code == 404:
             return DataNotFoundError("API endpoint or data not found")
         elif response.status_code == 429:
-            return RateLimitError("Rate limit exceeded")
+            return RateLimitError(
+                "Rate limit exceeded",
+                status_code=429,
+                retry_after=self._retry_after_seconds(response),
+                suggestion="Reduce request frequency or contact API provider",
+            )
         elif response.status_code >= 500:
             return CensusAPIError(
                 f"Server error: {response.status_code}",
@@ -235,10 +240,14 @@ class ResilientSession:
                 f"HTTP error: {response.status_code}", status_code=response.status_code
             )
 
-    @retry_with_backoff(max_retries=3, base_delay=1.0)
     def request(self, method: str, url: str, **kwargs) -> requests.Response:
         """
         Make a resilient HTTP request with automatic retries.
+
+        Transient failures (network errors, 5xx responses, and the status
+        codes in ``retry_on_status`` — by default 408 and 429) are retried
+        with exponential backoff. A numeric Retry-After header extends the
+        wait, capped at 60 seconds.
 
         Parameters
         ----------
@@ -259,34 +268,47 @@ class ResilientSession:
         CensusAPIError
             For various API error conditions
         """
-        # Enforce rate limiting
-        self._enforce_rate_limit()
-
         # Set default timeout if not provided
         if "timeout" not in kwargs:
             kwargs["timeout"] = 30
 
-        try:
-            response = self.session.request(method, url, **kwargs)
+        for attempt in range(self.max_retries + 1):
+            # Enforce rate limiting
+            self._enforce_rate_limit()
 
-            # Handle rate limiting
-            if response.status_code == 429:
-                self._handle_rate_limit_response(response)
+            try:
+                response = self.session.request(method, url, **kwargs)
+            except requests.exceptions.RequestException as e:
+                if attempt < self.max_retries:
+                    delay = self._backoff_delay(attempt)
+                    logger.warning(
+                        f"Network error: {e}. Retrying in {delay:.1f}s "
+                        f"(attempt {attempt + 2}/{self.max_retries + 1})..."
+                    )
+                    time.sleep(delay)
+                    continue
+                logger.error(f"All {self.max_retries + 1} attempts failed: {e}")
+                raise
 
-            # Handle other error status codes
-            if not response.ok:
-                if response.status_code in self.retry_on_status:
-                    # These status codes will be retried by the decorator
-                    response.raise_for_status()
-                else:
-                    # These are permanent errors, don't retry
-                    raise self._create_appropriate_exception(response)
+            if response.ok:
+                return response
 
-            return response
+            if self._is_retryable_status(response.status_code) and (
+                attempt < self.max_retries
+            ):
+                delay = self._backoff_delay(attempt)
+                retry_after = self._retry_after_seconds(response)
+                if retry_after is not None:
+                    delay = max(delay, min(retry_after, 60))
+                logger.warning(
+                    f"Transient error (HTTP {response.status_code}), retrying "
+                    f"in {delay:.1f}s (attempt {attempt + 2}/{self.max_retries + 1})..."
+                )
+                time.sleep(delay)
+                continue
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Network error: {e}")
-            raise
+            # Permanent error, or transient error with retries exhausted
+            raise self._create_appropriate_exception(response)
 
     def get(self, url: str, **kwargs) -> requests.Response:
         """Make a GET request."""
