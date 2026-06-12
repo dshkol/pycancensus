@@ -37,6 +37,11 @@ from .settings import (
 )
 from .geometry import get_census_geometry
 from .cache import list_cache, remove_from_cache, clear_cache
+from .recalls import (
+    get_recalled_database,
+    list_recalled_cached_data,
+    remove_recalled_cached_data,
+)
 from .hierarchy import parent_census_vectors, child_census_vectors
 from .vector_viz import visualize_vector_hierarchy
 from .intersect_geometry import get_intersecting_geometries
@@ -60,6 +65,9 @@ __all__ = [
     "list_cache",
     "remove_from_cache",
     "clear_cache",
+    "get_recalled_database",
+    "list_recalled_cached_data",
+    "remove_recalled_cached_data",
     "parent_census_vectors",
     "child_census_vectors",
     "find_census_vectors",

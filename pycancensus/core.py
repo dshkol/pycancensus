@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import warnings
+from datetime import datetime
 from typing import Dict, List, Optional, Union
 
 import pandas as pd
@@ -121,6 +122,9 @@ def get_census(
         if cached_data is not None:
             if not quiet:
                 print(f"Reading data from cache...")
+            from .recalls import check_recalled_data_and_warn
+
+            check_recalled_data_and_warn(cache_key)
             # Process labels for cached data
             cached_data = _extract_vector_metadata(cached_data, vectors, labels)
             return cached_data
@@ -172,7 +176,7 @@ def get_census(
         if geo_format == "geopandas" and vectors:
             # The geo.geojson endpoint doesn't properly return vector data
             # Use dedicated function to fetch and merge geo + vector data
-            result = _fetch_census_with_geometry_and_vectors(
+            result, data_version, geo_version = _fetch_census_with_geometry_and_vectors(
                 base_url, request_data, resolution, vectors, labels
             )
         else:
@@ -192,6 +196,14 @@ def get_census(
 
             response = get_session().post(f"{base_url}{endpoint}", files=multipart_data)
 
+            # Track the server data version for recalled-data detection
+            data_version = None
+            geo_version = None
+            if geo_format == "geopandas":
+                geo_version = response.headers.get("data-version")
+            else:
+                data_version = response.headers.get("data-version")
+
             # Process the response data based on endpoint
             if geo_format == "geopandas":
                 # geo.geojson returns JSON
@@ -203,8 +215,20 @@ def get_census(
 
         # Cache the result. use_cache=False means "don't read stale data",
         # not "don't cache": a forced refresh still updates the cache,
-        # matching the R package
-        cache_data(cache_key, result)
+        # matching the R package. Metadata enables recalled-data detection.
+        cache_data(
+            cache_key,
+            result,
+            metadata={
+                "dataset": dataset,
+                "regions": regions_for_json,
+                "level": level,
+                "vectors": list(vectors) if vectors else [],
+                "created_at": datetime.now().isoformat(),
+                "version": data_version,
+                "geo_version": geo_version,
+            },
+        )
 
         # Finish progress indicator
         if progress:
@@ -245,7 +269,7 @@ def _fetch_census_with_geometry_and_vectors(
     resolution: str,
     vectors: List[str],
     labels: str,
-) -> gpd.GeoDataFrame:
+):
     """
     Fetch census data with both geometry and vector data.
 
@@ -268,8 +292,9 @@ def _fetch_census_with_geometry_and_vectors(
 
     Returns
     -------
-    gpd.GeoDataFrame
-        GeoDataFrame with geometry and vector data merged.
+    tuple of (gpd.GeoDataFrame, str or None, str or None)
+        GeoDataFrame with geometry and vector data merged, plus the
+        data-version and geometry-version headers reported by the server.
     """
     # 1. Fetch geometry data (without vectors)
     geo_request_data = request_data.copy()
@@ -282,16 +307,18 @@ def _fetch_census_with_geometry_and_vectors(
     geo_response = get_session().post(
         f"{base_url}geo.geojson", files=geo_multipart_data
     )
+    geo_version = geo_response.headers.get("data-version")
     geo_data = geo_response.json()
     geo_result = _process_geojson_response(geo_data, None, labels)
 
     # 2. Fetch vector data using CSV endpoint
     csv_multipart_data = {key: (None, value) for key, value in request_data.items()}
     csv_response = get_session().post(f"{base_url}data.csv", files=csv_multipart_data)
+    data_version = csv_response.headers.get("data-version")
     csv_result = _process_csv_response(csv_response.text, vectors, labels)
 
     # 3. Merge the results on geographic identifier
-    return _merge_geo_and_csv_results(geo_result, csv_result)
+    return _merge_geo_and_csv_results(geo_result, csv_result), data_version, geo_version
 
 
 def _merge_geo_and_csv_results(
