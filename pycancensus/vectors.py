@@ -126,16 +126,16 @@ def list_census_vectors(
                 print("Reading vectors from cache...")
             return cached_data
 
-    # Query API using the correct endpoint (discovered via diagnostics)
-    params = {"dataset": dataset, "api_key": api_key}
+    # Dataset is a path component, matching the R package:
+    # /api/v1/vector_info/<dataset>.csv (the query-param form returns 404)
+    params = {"api_key": api_key}
 
     try:
         if not quiet:
             print(f"🔍 Querying CensusMapper API for {dataset} vectors...")
 
-        # Use the working CSV endpoint instead of the non-working JSON endpoint
         response = get_session().get(
-            f"{CENSUSMAPPER_API_URL}/vector_info.csv", params=params
+            f"{CENSUSMAPPER_API_URL}/vector_info/{dataset}.csv", params=params
         )
 
         # Parse CSV response

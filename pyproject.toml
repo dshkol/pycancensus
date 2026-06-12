@@ -36,7 +36,7 @@ dependencies = [
 dev = [
     "pytest>=6.0",
     "pytest-cov",
-    "black",
+    "black>=24,<26",
     "flake8",
 ]
 docs = [
