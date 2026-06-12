@@ -32,6 +32,9 @@ Region Operations
 
    list_census_regions
    search_census_regions
+   as_census_region_list
+   add_unique_names_to_region_list
+   explore_census_regions
 
 Vector/Variable Operations
 --------------------------
@@ -44,7 +47,9 @@ Vector/Variable Operations
    find_census_vectors
    parent_census_vectors
    child_census_vectors
+   visualize_vector_hierarchy
    label_vectors
+   explore_census_vectors
 
 Configuration Management
 ------------------------
@@ -68,3 +73,6 @@ Cache Management
    list_cache
    remove_from_cache
    clear_cache
+   get_recalled_database
+   list_recalled_cached_data
+   remove_recalled_cached_data

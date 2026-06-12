@@ -85,6 +85,27 @@ All Core Functions Available
    * - ``list_cancensus_cache()``
      - ``list_cache()``
      - ✅ 100%
+   * - ``visualize_vector_hierarchy()``
+     - ``visualize_vector_hierarchy()``
+     - ✅ 100%
+   * - ``as_census_region_list()``
+     - ``as_census_region_list()``
+     - ✅ 100%
+   * - ``add_unique_names_to_region_list()``
+     - ``add_unique_names_to_region_list()``
+     - ✅ 100%
+   * - ``explore_census_vectors()``
+     - ``explore_census_vectors()``
+     - ✅ 100%
+   * - ``explore_census_regions()``
+     - ``explore_census_regions()``
+     - ✅ 100%
+   * - ``list_recalled_cached_data()``
+     - ``list_recalled_cached_data()``
+     - ✅ 100%
+   * - ``remove_recalled_cached_data()``
+     - ``remove_recalled_cached_data()``
+     - ✅ 100%
 
 Syntax Conversion
 -----------------
@@ -455,12 +476,12 @@ Key Differences to Remember
 
    Python: ``None``
 
-5. **Function Parameter Order**
+5. **Function Signatures**
 
-   ``find_census_vectors()`` has different parameter order:
+   As of pycancensus 0.2.0, ``find_census_vectors()`` matches the R
+   signature exactly:
 
-   - R: ``find_census_vectors(query, dataset, ...)``
-   - Python: ``find_census_vectors(dataset, query, ...)``
+   - R and Python: ``find_census_vectors(query, dataset, type, query_type)``
 
 Performance Comparison
 ----------------------

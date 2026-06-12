@@ -2,34 +2,94 @@
 
 All notable changes to pycancensus will be documented in this file.
 
-## [Unreleased]
+## [0.2.0] - 2026-06-12
+
+This release synchronizes pycancensus with R cancensus 0.6.1, porting its
+bug fixes, performance work, and new features, and fixes several pycancensus
+bugs found during the comparison. Items reference the R cancensus equivalent
+where one exists.
+
+### Breaking Changes
+
+- `find_census_vectors()` now matches the R signature
+  `find_census_vectors(query, dataset, type="all", query_type="exact")`.
+  The previous package-level version took `(dataset, query, search_type=...)`.
+  The `"regex"` search type is gone (R has no regex mode); `"semantic"` is new.
+- `parent_census_vectors()` and `child_census_vectors()` now raise
+  `ValueError("Unable to determine dataset")` for vectors spanning multiple
+  datasets instead of silently inferring from the first vector (R parity).
 
 ### Bug Fixes
 
-#### National-Level Data Support
-- Added support for national-level census data retrieval (level='C')
-- Updated validation in `utils.py` to include 'C' in valid levels
-- Created comprehensive test suite in `tests/test_national_level.py`
-- Achieves feature parity with R cancensus for national baseline comparisons
+- **CRITICAL**: Fixed `list_census_vectors()` 404 error — the CensusMapper
+  API serves `/vector_info/<dataset>.csv` (dataset in the path). This also
+  broke `search_census_vectors()` and the hierarchy functions.
+- **CRITICAL**: `parent_census_vectors()` / `child_census_vectors()`
+  returned only direct parents/children; they now traverse the full
+  hierarchy via BFS, matching R's results exactly (verified against
+  R cancensus 0.6.1 on live data).
+- API retry logic now retries all 5xx plus 408/429 responses with
+  exponential backoff and honors numeric `Retry-After` headers (capped at
+  60s). 429 responses previously raised immediately without retrying.
+  [R 0.6.1]
+- Exact vector search matches queries containing regex metacharacters
+  (e.g. `"income ($)"`) literally instead of erroring; and
+  `search_census_vectors()` no longer interprets the query as a regex.
+  [R 0.6.1]
+- A 200 response carrying an error payload is no longer parsed and cached
+  as census data. [parallels R 0.6.1's WDS error-caching fix]
+- `use_cache=False` now refreshes the cache after re-downloading instead
+  of leaving stale data in place (R semantics).
+- `list_census_regions()` returned UID columns (`region`, `CMA_UID`,
+  `CD_UID`, `PR_UID`) as floats (`59933.0`); they are now strings,
+  matching R.
+- Cache-write failures warn via `warnings.warn` instead of printing.
+- Added support for national-level census data retrieval (level='C') for
+  national baseline comparisons, with validation and tests.
 
-#### API Endpoint Fixes
-- **CRITICAL**: Fixed `list_census_regions()` 404 error
-- Changed endpoint from `/api/v1/list_regions` to `/data_sets/{dataset}/place_names.csv`
-- Updated response parsing from JSON to CSV format
-- Now successfully retrieves all regions (5,518 for CA16/CA21)
+### New Features
 
-#### Test Infrastructure
-- Fixed CI test failures across Python 3.9 and 3.10
-- Made psutil dependency optional in performance tests
-- Updated mocked API tests to match new CSV response format
-- Improved cross-validation test assertions for better R compatibility checking
+- `find_census_vectors()` semantic search: n-gram edit-distance matching
+  tolerant of misspellings and phrasing, with per-word best matching and
+  length-bound pruning; and keyword search with match-count ranking.
+  [R 0.6.0/0.6.1]
+- `visualize_vector_hierarchy()`: ASCII tree visualization of vector
+  hierarchies with `max_depth` and `show_type`; nodes truncated by
+  `max_depth` are marked `...` rather than mislabeled as leaves.
+  [R 0.6.0/0.6.1]
+- Recalled-data handling: `get_census()` records the server's data version
+  with each cache entry and warns when reading recalled data;
+  `list_recalled_cached_data()` and `remove_recalled_cached_data()`
+  inspect and clean recalled entries. Vector matching is by exact ID.
+  [R 0.5.x/0.6.1]
+- `child_census_vectors()` gains `leaves_only`, `max_level`, and
+  `keep_parent`; both hierarchy functions accept DataFrame input.
+- Region-list helpers: `as_census_region_list()` converts a filtered
+  `list_census_regions()` result into the `regions` argument for
+  `get_census()`; `add_unique_names_to_region_list()` de-duplicates
+  region names by municipal status and region ID. [R parity]
+- `explore_census_vectors()` / `explore_census_regions()`: open the
+  CensusMapper interactive explorer in a browser. [R parity]
+- `list_cache()` reports per-entry metadata (dataset, level, vectors,
+  data version) for entries written by this version onward.
 
-### Documentation
+### Performance
 
-#### Professional Cleanup
-- Removed emojis from all public-facing documentation
-- Cleaned up README.md, tutorials, and examples for professional tone
-- Improved documentation clarity and readability
+- In-memory session cache for `list_census_vectors()` and
+  `list_census_regions()`: repeated calls within a session skip disk
+  entirely (~9x faster cache hits locally). [R 0.6.1]
+- Hierarchy traversal uses hash-based BFS instead of repeated DataFrame
+  filtering. [R 0.6.1]
+
+### Test Infrastructure & Documentation
+
+- Unit suite grew from 28 to 114 tests; new suites for retry behavior,
+  hierarchy traversal, search modes, session cache, cache semantics,
+  recalls, and region helpers.
+- Fixed `list_census_regions()` endpoint (`/data_sets/{dataset}/place_names.csv`)
+  and CI failures across Python versions; pinned black below 26 so new
+  stable-style releases don't break formatting checks.
+- Removed emojis from public-facing documentation and improved clarity.
 
 ## [0.1.0] - 2025-06-18
 

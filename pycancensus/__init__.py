@@ -7,7 +7,7 @@ Census data and geography retrieved using the CensusMapper API.
 Documentation: https://pycancensus.readthedocs.io/
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Dmitry Shkolnik"
 __email__ = "shkolnikd@gmail.com"
 
