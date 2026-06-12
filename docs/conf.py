@@ -57,6 +57,14 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # -- Options for HTML output ------------------------------------------------
 html_theme = 'furo'
 html_static_path = ['_static']
+
+# Generate llms.txt / llms-full.txt (https://llmstxt.org) and serve them
+# from the site root alongside the HTML
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import generate_llms_txt  # noqa: E402  (lives next to conf.py)
+
+generate_llms_txt.generate()
+html_extra_path = ['_llms']
 html_title = 'pycancensus'
 html_theme_options = {
     'source_repository': 'https://github.com/dshkol/pycancensus/',
