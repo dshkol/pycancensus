@@ -356,58 +356,88 @@ def _extract_vector_metadata(df, vectors, labels):
     return df
 
 
-def _process_csv_response(csv_text, vectors, labels):
-    """Process CSV API response into a pandas DataFrame."""
-    # Read all columns as strings initially (like R package)
-    df = pd.read_csv(io.StringIO(csv_text), dtype=str, encoding="utf-8")
+def _normalize_census_dataframe(
+    df: Union[pd.DataFrame, gpd.GeoDataFrame],
+    vectors: Optional[List[str]],
+    labels: str,
+) -> Union[pd.DataFrame, gpd.GeoDataFrame]:
+    """
+    Normalize a census DataFrame or GeoDataFrame.
 
-    # Fix column names by removing trailing/leading spaces (critical fix for API compatibility)
-    df.columns = df.columns.str.strip()
+    Applies consistent data type conversions and metadata extraction:
+    - Converts census NA values ('x', 'X', 'F', '...', '-', '') to pd.NA
+    - Converts numeric columns (population, households, etc.) to numeric dtype
+    - Converts categorical columns (Type, Region Name) to category dtype
+    - Extracts and stores vector metadata
 
-    # Define census-specific NA values (matching R package)
+    Parameters
+    ----------
+    df : pd.DataFrame or gpd.GeoDataFrame
+        The data to normalize.
+    vectors : list of str, optional
+        Vector codes that were requested (for metadata extraction).
+    labels : str
+        Label format - 'detailed' or 'short'.
+
+    Returns
+    -------
+    pd.DataFrame or gpd.GeoDataFrame
+        The normalized data with proper dtypes.
+    """
+    # Census-specific NA values (matching R package)
     census_na_values = ["x", "X", "F", "...", "-", ""]
 
-    # Convert specific columns to numeric (matching R package exactly)
-    numeric_columns = []
-
     # Standard census columns that should be numeric
-    # Note: API may return column names with trailing spaces, so we need flexible matching
-    standard_numeric = ["Population", "Households", "Dwellings", "Area (sq km)"]
+    # Include both long names (CSV endpoint) and short names (GeoJSON endpoint)
+    standard_numeric = [
+        "Population",
+        "Households",
+        "Dwellings",
+        "Area (sq km)",
+        "pop",  # GeoJSON short name
+        "dw",  # GeoJSON short name
+        "hh",  # GeoJSON short name
+        "a",  # GeoJSON short name
+    ]
 
-    # Create a mapping of actual column names to expected names for flexible matching
-    column_mapping = {}
+    # Find numeric columns to convert
+    numeric_columns = []
     for expected_col in standard_numeric:
-        # Check for exact match first
+        # Check for exact match
         if expected_col in df.columns:
             numeric_columns.append(expected_col)
             continue
-
-        # Check for variations with trailing/leading spaces
+        # Check for variations with trailing/leading spaces (API quirk)
         for actual_col in df.columns:
             if actual_col.strip() == expected_col:
                 numeric_columns.append(actual_col)
-                column_mapping[actual_col] = expected_col
                 break
 
-    # Vector columns (v_* pattern) - handle both short and descriptive names
+    # Vector columns (v_* pattern) are always numeric
     for col in df.columns:
-        if col.startswith("v_CA") or col.startswith("v_"):
+        if col.startswith("v_"):
             numeric_columns.append(col)
 
     # Convert to numeric with census NA handling
     for col in numeric_columns:
-        # Replace census NA values with NaN, then convert to numeric
-        df[col] = df[col].replace(census_na_values, pd.NA)
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+        if col in df.columns:
+            df[col] = df[col].replace(census_na_values, pd.NA)
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Convert categorical columns to pandas categorical (matching R factors)
-    categorical_columns = ["Type", "Region Name"]
+    # Standard categorical columns
+    # Include both long names (CSV endpoint) and short names (GeoJSON endpoint)
+    categorical_columns = [
+        "Type",
+        "Region Name",
+        "name",  # GeoJSON short name
+        "t",  # GeoJSON short name
+    ]
+
     for expected_col in categorical_columns:
-        # Check for exact match first
+        # Check for exact match
         if expected_col in df.columns:
             df[expected_col] = df[expected_col].astype("category")
             continue
-
         # Check for variations with trailing/leading spaces
         for actual_col in df.columns:
             if actual_col.strip() == expected_col:
@@ -420,6 +450,18 @@ def _process_csv_response(csv_text, vectors, labels):
     return df
 
 
+def _process_csv_response(csv_text, vectors, labels):
+    """Process CSV API response into a pandas DataFrame."""
+    # Read all columns as strings initially (like R package)
+    df = pd.read_csv(io.StringIO(csv_text), dtype=str, encoding="utf-8")
+
+    # Fix column names by removing trailing/leading spaces (critical fix for API compatibility)
+    df.columns = df.columns.str.strip()
+
+    # Apply shared normalization
+    return _normalize_census_dataframe(df, vectors, labels)
+
+
 def _process_json_response(data, vectors, labels):
     """Process JSON API response into a pandas DataFrame."""
     if "data" not in data:
@@ -427,10 +469,8 @@ def _process_json_response(data, vectors, labels):
 
     df = pd.DataFrame(data["data"])
 
-    # Extract vector metadata and handle labels
-    df = _extract_vector_metadata(df, vectors, labels)
-
-    return df
+    # Apply shared normalization
+    return _normalize_census_dataframe(df, vectors, labels)
 
 
 def _process_geojson_response(data, vectors, labels):
@@ -440,70 +480,5 @@ def _process_geojson_response(data, vectors, labels):
 
     gdf = gpd.GeoDataFrame.from_features(data["features"], crs="EPSG:4326")
 
-    # Apply the same numeric conversion logic as CSV processing
-    # This was missing and causing all columns to remain as strings
-
-    # Define census-specific NA values (matching R package)
-    census_na_values = ["x", "X", "F", "...", "-", ""]
-
-    # Convert specific columns to numeric (matching R package exactly)
-    numeric_columns = []
-
-    # Standard census columns that should be numeric
-    # Note: API may return column names with trailing spaces, so we need flexible matching
-    standard_numeric = [
-        "Population",
-        "Households",
-        "Dwellings",
-        "Area (sq km)",
-        "pop",
-        "dw",
-        "hh",
-        "a",
-    ]
-
-    # Create a mapping of actual column names to expected names for flexible matching
-    column_mapping = {}
-    for expected_col in standard_numeric:
-        # Check for exact match first
-        if expected_col in gdf.columns:
-            numeric_columns.append(expected_col)
-            continue
-
-        # Check for variations with trailing/leading spaces
-        for actual_col in gdf.columns:
-            if actual_col.strip() == expected_col:
-                numeric_columns.append(actual_col)
-                column_mapping[actual_col] = expected_col
-                break
-
-    # Vector columns (v_* pattern) - handle both short and descriptive names
-    for col in gdf.columns:
-        if col.startswith("v_CA") or col.startswith("v_"):
-            numeric_columns.append(col)
-
-    # Convert to numeric with census NA handling
-    for col in numeric_columns:
-        if col in gdf.columns:  # Additional safety check
-            # Replace census NA values with NaN, then convert to numeric
-            gdf[col] = gdf[col].replace(census_na_values, pd.NA)
-            gdf[col] = pd.to_numeric(gdf[col], errors="coerce")
-
-    # Convert categorical columns to pandas categorical (matching R factors)
-    categorical_columns = ["Type", "Region Name", "name", "t"]
-    for expected_col in categorical_columns:
-        # Check for exact match first
-        if expected_col in gdf.columns:
-            gdf[expected_col] = gdf[expected_col].astype("category")
-            continue
-
-        # Check for variations with trailing/leading spaces
-        for actual_col in gdf.columns:
-            if actual_col.strip() == expected_col:
-                gdf[actual_col] = gdf[actual_col].astype("category")
-                break
-
-    # Extract vector metadata and handle labels
-    gdf = _extract_vector_metadata(gdf, vectors, labels)
-
-    return gdf
+    # Apply shared normalization
+    return _normalize_census_dataframe(gdf, vectors, labels)

@@ -267,6 +267,97 @@ class TestDataProcessing:
         assert result_df["Type"].dtype.name == "category"
         assert result_df["Region Name"].dtype.name == "category"
 
+    def test_normalize_census_dataframe_census_na_values(self):
+        """Test that census NA values are converted to pd.NA."""
+        from pycancensus.core import _normalize_census_dataframe
+
+        # Create DataFrame with census NA values
+        df = pd.DataFrame(
+            {
+                "Population": ["1000", "x", "2000", "F", "..."],
+                "v_CA21_1": ["100", "-", "200", "", "300"],
+            }
+        )
+
+        result = _normalize_census_dataframe(df, ["v_CA21_1"], "detailed")
+
+        # Check that census NA values are now pd.NA
+        assert pd.isna(result["Population"].iloc[1])  # 'x'
+        assert pd.isna(result["Population"].iloc[3])  # 'F'
+        assert pd.isna(result["Population"].iloc[4])  # '...'
+        assert pd.isna(result["v_CA21_1"].iloc[1])  # '-'
+        assert pd.isna(result["v_CA21_1"].iloc[3])  # ''
+
+        # Check that valid values are numeric
+        assert result["Population"].iloc[0] == 1000
+        assert result["v_CA21_1"].iloc[0] == 100
+
+    def test_normalize_census_dataframe_geojson_short_names(self):
+        """Test that GeoJSON short column names are handled."""
+        from pycancensus.core import _normalize_census_dataframe
+
+        # Create DataFrame with GeoJSON-style short column names
+        df = pd.DataFrame(
+            {
+                "pop": ["1000", "2000"],
+                "dw": ["500", "600"],
+                "hh": ["400", "500"],
+                "a": ["10.5", "20.5"],
+                "name": ["Region A", "Region B"],
+                "t": ["CSD", "CMA"],
+            }
+        )
+
+        result = _normalize_census_dataframe(df, None, "detailed")
+
+        # Check numeric columns are converted
+        assert pd.api.types.is_numeric_dtype(result["pop"])
+        assert pd.api.types.is_numeric_dtype(result["dw"])
+        assert pd.api.types.is_numeric_dtype(result["hh"])
+        assert pd.api.types.is_numeric_dtype(result["a"])
+
+        # Check categorical columns are converted
+        assert result["name"].dtype.name == "category"
+        assert result["t"].dtype.name == "category"
+
+    def test_normalize_produces_equivalent_results(self):
+        """Test that CSV and GeoJSON processing produce equivalent normalization."""
+        from pycancensus.core import _normalize_census_dataframe
+
+        # Same data structure, different column naming conventions
+        csv_style = pd.DataFrame(
+            {
+                "Population": ["1000", "x"],
+                "Type": ["CSD", "CMA"],
+                "Region Name": ["A", "B"],
+                "v_CA21_1": ["100", "200"],
+            }
+        )
+
+        geojson_style = pd.DataFrame(
+            {
+                "pop": ["1000", "x"],
+                "t": ["CSD", "CMA"],
+                "name": ["A", "B"],
+                "v_CA21_1": ["100", "200"],
+            }
+        )
+
+        csv_result = _normalize_census_dataframe(
+            csv_style.copy(), ["v_CA21_1"], "short"
+        )
+        geo_result = _normalize_census_dataframe(
+            geojson_style.copy(), ["v_CA21_1"], "short"
+        )
+
+        # Both should have numeric vector columns
+        assert pd.api.types.is_numeric_dtype(csv_result["v_CA21_1"])
+        assert pd.api.types.is_numeric_dtype(geo_result["v_CA21_1"])
+
+        # Both should handle NA values identically
+        assert pd.isna(csv_result["Population"].iloc[1])
+        assert pd.isna(geo_result["pop"].iloc[1])
+
 
 class TestCache:
     """Test caching functionality."""
