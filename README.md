@@ -30,9 +30,17 @@ Access, retrieve, and work with Canadian Census data and geography.
 ### Variable Discovery
 * `list_census_vectors()` - Browse all available variables
 * `search_census_vectors()` - Search variables by keyword
-* `parent_census_vectors()` - Navigate variable hierarchies upward
-* `child_census_vectors()` - Navigate variable hierarchies downward
-* `find_census_vectors()` - Enhanced variable search with fuzzy matching
+* `find_census_vectors()` - Exact, semantic (fuzzy), and keyword search
+* `parent_census_vectors()` - Full ancestry of a variable, like R cancensus
+* `child_census_vectors()` - Full descendant tree, with `leaves_only` and `max_level`
+* `visualize_vector_hierarchy()` - ASCII tree view of variable hierarchies
+* `explore_census_vectors()` - Open the interactive CensusMapper explorer
+
+### Region Discovery
+* `list_census_regions()` / `search_census_regions()` - Browse and search regions
+* `as_census_region_list()` - Convert filtered region lists into `get_census()` input
+* `add_unique_names_to_region_list()` - De-duplicate ambiguous municipality names
+* `explore_census_regions()` - Open the interactive CensusMapper explorer
 
 ### Geographic Capabilities
 * GeoPandas integration for spatial analysis
@@ -41,10 +49,11 @@ Access, retrieve, and work with Canadian Census data and geography.
 
 ### Reliability & Performance
 * Production-grade error handling with helpful messages
-* Automatic retry logic with exponential backoff
-* Connection pooling for improved performance
+* Automatic retry with exponential backoff, honoring server Retry-After headers
+* Connection pooling and in-memory session caching for metadata
 * Rate limiting to respect API constraints
-* Comprehensive caching system
+* Comprehensive file caching with StatCan data-recall detection
+  (`list_recalled_cached_data()` / `remove_recalled_cached_data()`)
 
 ## Installation
 
