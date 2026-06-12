@@ -12,7 +12,7 @@ import requests
 from .settings import get_api_key, CENSUSMAPPER_API_URL
 from .resilience import get_session
 from .utils import validate_dataset
-from .cache import get_cached_data, cache_data
+from .cache import get_cached_data, cache_data, session_cache_get, session_cache_set
 
 
 def label_vectors(x):
@@ -117,13 +117,17 @@ def list_census_vectors(
                 "environment variable."
             )
 
-    # Check cache first
+    # Check caches first: in-memory session cache, then file cache
+    cache_key = f"vectors_{dataset}"
     if use_cache:
-        cache_key = f"vectors_{dataset}"
+        cached_data = session_cache_get(cache_key)
+        if cached_data is not None:
+            return cached_data
         cached_data = get_cached_data(cache_key)
         if cached_data is not None:
             if not quiet:
                 print("Reading vectors from cache...")
+            session_cache_set(cache_key, cached_data)
             return cached_data
 
     # Dataset is a path component, matching the R package:
@@ -168,6 +172,7 @@ def list_census_vectors(
             df["parent_vector"] = df["parent_vector"].replace(["", "NA"], None)
 
         # Cache the result
+        session_cache_set(cache_key, df)
         if use_cache:
             cache_data(cache_key, df)
 

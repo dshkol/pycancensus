@@ -11,7 +11,7 @@ import requests
 from .settings import get_api_key, CENSUSMAPPER_DATA_URL
 from .resilience import get_session
 from .utils import validate_dataset
-from .cache import get_cached_data, cache_data
+from .cache import get_cached_data, cache_data, session_cache_get, session_cache_set
 
 
 def list_census_regions(
@@ -62,13 +62,17 @@ def list_census_regions(
                 "environment variable."
             )
 
-    # Check cache first
+    # Check caches first: in-memory session cache, then file cache
+    cache_key = f"regions_{dataset}"
     if use_cache:
-        cache_key = f"regions_{dataset}"
+        cached_data = session_cache_get(cache_key)
+        if cached_data is not None:
+            return cached_data
         cached_data = get_cached_data(cache_key)
         if cached_data is not None:
             if not quiet:
                 print("Reading regions from cache...")
+            session_cache_set(cache_key, cached_data)
             return cached_data
 
     # Query API using the correct endpoint (same as R cancensus)
@@ -97,6 +101,7 @@ def list_census_regions(
         df = df.rename(columns=column_mapping)
 
         # Cache the result
+        session_cache_set(cache_key, df)
         if use_cache:
             cache_data(cache_key, df)
 
