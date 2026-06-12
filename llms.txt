@@ -1,0 +1,32 @@
+# pycancensus
+
+> Python interface to Canadian Census data and geographies via the
+> CensusMapper API. An explicit port of the R cancensus package with
+> verified-equivalent results: same function names, pandas/GeoPandas
+> output. Free API key required (https://censusmapper.ca/users/sign_up).
+
+Datasets cover the 1996-2021 Canadian censuses (CA1996...CA21). The core
+workflow is: discover variables ("vectors") -> select regions -> call
+get_census(), which returns an analysis-ready DataFrame (or GeoDataFrame
+with geo_format="geopandas").
+
+## Docs
+
+- [Usage guide for LLMs and agents](https://pycancensus.readthedocs.io/en/latest/llm_usage.html): exact
+  current signatures, 0.2.0 changes, R differences, pitfalls
+- [Getting started](https://pycancensus.readthedocs.io/en/latest/tutorials/getting_started.html): discovery,
+  hierarchies, region selection, data retrieval
+- [API reference](https://pycancensus.readthedocs.io/en/latest/api/index.html): all public functions
+- [R to Python migration](https://pycancensus.readthedocs.io/en/latest/migration.html): for R cancensus users
+- [Working with geometry](https://pycancensus.readthedocs.io/en/latest/tutorials/working_with_geometry.html)
+- [Caching and recalled data](https://pycancensus.readthedocs.io/en/latest/tutorials/caching_data.html)
+
+## Source
+
+- [GitHub repository](https://github.com/dshkol/pycancensus)
+- [Changelog](https://github.com/dshkol/pycancensus/blob/main/CHANGELOG.md)
+- [R cancensus (reference implementation)](https://github.com/mountainMath/cancensus)
+
+## Optional
+
+- [Full docs as one markdown file](https://pycancensus.readthedocs.io/en/latest/llms-full.txt)

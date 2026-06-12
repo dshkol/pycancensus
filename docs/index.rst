@@ -12,6 +12,7 @@ and is explicitly a Python port of the R `cancensus` package.
    auto_examples/index
    validation
    migration
+   llm_usage
    api/index
 
 Key Features
