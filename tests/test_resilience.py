@@ -9,6 +9,7 @@ from pycancensus.resilience import (
     AuthenticationError,
     CensusAPIError,
     DataNotFoundError,
+    NetworkError,
     RateLimitError,
     ResilientSession,
 )
@@ -28,6 +29,13 @@ def make_session(**kwargs):
     session = ResilientSession(**kwargs)
     session._min_request_interval = 0
     return session
+
+
+def test_network_error_is_a_census_api_error():
+    error = NetworkError("connection refused")
+
+    assert isinstance(error, CensusAPIError)
+    assert "connection refused" in str(error)
 
 
 class TestRetryableStatuses:

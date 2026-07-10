@@ -64,6 +64,16 @@ class DataNotFoundError(CensusAPIError):
         )
 
 
+class NetworkError(CensusAPIError):
+    """Raised when the API cannot be reached after retrying."""
+
+    def __init__(self, details: str):
+        super().__init__(
+            f"API request failed: {details}",
+            suggestion="Check your network connection and try again",
+        )
+
+
 def retry_with_backoff(
     max_retries: int = 3,
     base_delay: float = 1.0,

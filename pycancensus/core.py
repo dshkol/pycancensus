@@ -14,10 +14,13 @@ import geopandas as gpd
 import requests
 
 from .settings import get_api_key, get_cache_path, CENSUSMAPPER_API_URL
-from .resilience import get_session
+from .resilience import CensusAPIError, NetworkError, get_session
 from .cache import get_cached_data, cache_data
 from .utils import validate_dataset, validate_level, process_regions
 from .progress import show_request_preview, create_progress_for_request
+
+
+_CACHE_SCHEMA_VERSION = 2
 
 
 def get_census(
@@ -115,7 +118,13 @@ def get_census(
 
     # Check cache first
     cache_key = _generate_cache_key(
-        dataset, processed_regions, vectors, level, geo_format
+        dataset,
+        processed_regions,
+        vectors,
+        level,
+        geo_format,
+        resolution,
+        labels,
     )
     if use_cache:
         cached_data = get_cached_data(cache_key)
@@ -125,8 +134,6 @@ def get_census(
             from .recalls import check_recalled_data_and_warn
 
             check_recalled_data_and_warn(cache_key)
-            # Process labels for cached data
-            cached_data = _extract_vector_metadata(cached_data, vectors, labels)
             return cached_data
 
     # Build API request exactly like the R package
@@ -248,19 +255,30 @@ def get_census(
 
         return result
 
+    except CensusAPIError:
+        raise
     except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"API request failed: {e}")
+        raise NetworkError(str(e)) from e
     except Exception as e:
-        raise RuntimeError(f"Failed to process API response: {e}")
+        raise RuntimeError(f"Failed to process API response: {e}") from e
 
 
-def _generate_cache_key(dataset, regions, vectors, level, geo_format):
+def _generate_cache_key(
+    dataset, regions, vectors, level, geo_format, resolution, labels
+):
     """Generate a cache key for the given parameters."""
-    # Create a string representation of the parameters
-    params_str = f"{dataset}_{regions}_{vectors}_{level}_{geo_format}"
-
-    # Create a hash of the parameters
-    return hashlib.md5(params_str.encode()).hexdigest()
+    payload = {
+        "schema": _CACHE_SCHEMA_VERSION,
+        "dataset": dataset,
+        "regions": regions,
+        "vectors": vectors or [],
+        "level": level,
+        "geo_format": geo_format,
+        "resolution": resolution,
+        "labels": labels,
+    }
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode()).hexdigest()
 
 
 def _fetch_census_with_geometry_and_vectors(
@@ -357,29 +375,67 @@ def _merge_geo_and_csv_results(
             merge_key_geo = potential_key
             break
 
-    if merge_key_csv and merge_key_geo:
-        # Merge on identifier - keep geo columns, add vector columns from CSV
-        vector_columns = [col for col in csv_result.columns if col.startswith("v_")]
-        merge_columns = [merge_key_csv] + vector_columns
-
-        result = geo_result.merge(
-            csv_result[merge_columns],
-            left_on=merge_key_geo,
-            right_on=merge_key_csv,
-            how="left",
+    if not merge_key_csv or not merge_key_geo:
+        raise ValueError(
+            "Cannot safely merge geography and census data: no supported "
+            "geographic identifier was found in both responses"
         )
 
-        # Drop duplicate merge key if names differ
-        if merge_key_csv != merge_key_geo and merge_key_csv in result.columns:
-            result = result.drop(columns=[merge_key_csv])
+    if geo_result[merge_key_geo].isna().any():
+        raise ValueError(
+            f"Cannot safely merge geography and census data: missing "
+            f"identifiers in geography column {merge_key_geo!r}"
+        )
+    if csv_result[merge_key_csv].isna().any():
+        raise ValueError(
+            f"Cannot safely merge geography and census data: missing "
+            f"identifiers in census column {merge_key_csv!r}"
+        )
+    if geo_result[merge_key_geo].duplicated().any():
+        raise ValueError(
+            f"Cannot safely merge geography and census data: duplicate "
+            f"identifiers in geography column {merge_key_geo!r}"
+        )
+    if csv_result[merge_key_csv].duplicated().any():
+        raise ValueError(
+            f"Cannot safely merge geography and census data: duplicate "
+            f"identifiers in census column {merge_key_csv!r}"
+        )
 
-    else:
-        # Fallback: assume same row order and merge by index
-        vector_columns = [col for col in csv_result.columns if col.startswith("v_")]
-        result = geo_result.copy()
-        for col in vector_columns:
-            if len(csv_result) == len(geo_result):
-                result[col] = csv_result[col].values
+    extra_census_ids = csv_result.loc[
+        ~csv_result[merge_key_csv].isin(geo_result[merge_key_geo]), merge_key_csv
+    ]
+    if not extra_census_ids.empty:
+        sample = ", ".join(map(str, extra_census_ids.head(5)))
+        raise ValueError(
+            "Cannot safely merge geography and census data: "
+            f"{len(extra_census_ids)} census identifier(s) had no geography match "
+            f"(sample: {sample})"
+        )
+
+    vector_columns = [col for col in csv_result.columns if col.startswith("v_")]
+    merge_columns = [merge_key_csv] + vector_columns
+    result = geo_result.merge(
+        csv_result[merge_columns],
+        left_on=merge_key_geo,
+        right_on=merge_key_csv,
+        how="left",
+        validate="one_to_one",
+        indicator=True,
+    )
+
+    unmatched = result.loc[result["_merge"] != "both", merge_key_geo]
+    if not unmatched.empty:
+        sample = ", ".join(map(str, unmatched.head(5)))
+        raise ValueError(
+            "Cannot safely merge geography and census data: "
+            f"{len(unmatched)} geography identifier(s) had no census match "
+            f"(sample: {sample})"
+        )
+
+    result = result.drop(columns=["_merge"])
+    if merge_key_csv != merge_key_geo and merge_key_csv in result.columns:
+        result = result.drop(columns=[merge_key_csv])
 
     return result
 

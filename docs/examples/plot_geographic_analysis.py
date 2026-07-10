@@ -12,6 +12,7 @@ including creating maps and performing spatial analysis.
 
 import pycancensus as pc
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 # Set up the plotting style

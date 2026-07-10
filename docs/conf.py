@@ -52,7 +52,17 @@ extensions = [
 ]
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = [
+    '_build',
+    'Thumbs.db',
+    '.DS_Store',
+    # Sphinx-Gallery's RST files are the canonical gallery documents. The
+    # adjacent generated notebooks and source bundles are downloadable assets.
+    'auto_examples/*.ipynb',
+    'auto_examples/*.py',
+    'auto_examples/*.zip',
+    'auto_examples/*.codeobj.json',
+]
 
 # -- Options for HTML output ------------------------------------------------
 html_theme = 'furo'
@@ -112,7 +122,6 @@ sphinx_gallery_conf = {
     'gallery_dirs': 'auto_examples',
     'filename_pattern': r'^plot_',
     'remove_config_comments': True,
-    'plot_gallery': 'True',
     'backreferences_dir': 'gen_modules/backreferences',
     'doc_module': ('pycancensus',),
     'reference_url': {
@@ -124,7 +133,7 @@ sphinx_gallery_conf = {
         "# It can be customized to whatever you like\n"
         "%matplotlib inline"
     ),
-    # Execute examples on RTD to generate visualizations
+    # Execute examples to generate visualizations and linked gallery pages.
     'plot_gallery': True,
 }
 
