@@ -13,7 +13,7 @@ from shapely.geometry import MultiPolygon, Point, Polygon
 from shapely.ops import unary_union
 
 from .settings import get_api_key, CENSUSMAPPER_API_URL
-from .resilience import get_session
+from .resilience import CensusAPIError, NetworkError, get_session
 from .cache import get_cached_data, cache_data
 from .utils import validate_dataset
 
@@ -211,7 +211,9 @@ def _query_intersecting_geometries_api(
 
         return result
 
+    except CensusAPIError:
+        raise
     except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"API request failed: {e}")
+        raise NetworkError(str(e)) from e
     except Exception as e:
-        raise RuntimeError(f"Failed to process API response: {e}")
+        raise RuntimeError(f"Failed to process API response: {e}") from e

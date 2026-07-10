@@ -9,7 +9,7 @@ import pandas as pd
 import requests
 
 from .settings import get_api_key, CENSUSMAPPER_API_URL
-from .resilience import get_session
+from .resilience import CensusAPIError, NetworkError, get_session
 from .cache import get_cached_data, cache_data
 
 
@@ -93,10 +93,12 @@ def list_census_datasets(
 
         return df
 
+    except CensusAPIError:
+        raise
     except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"API request failed: {e}")
+        raise NetworkError(str(e)) from e
     except Exception as e:
-        raise RuntimeError(f"Failed to process API response: {e}")
+        raise RuntimeError(f"Failed to process API response: {e}") from e
 
 
 def get_dataset_attribution(dataset: str) -> str:

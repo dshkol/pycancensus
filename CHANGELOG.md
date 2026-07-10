@@ -2,6 +2,23 @@
 
 All notable changes to pycancensus will be documented in this file.
 
+## [Unreleased]
+
+### Bug Fixes
+
+- Sphinx-Gallery thumbnails now resolve to their example pages, generated
+  notebooks no longer shadow the canonical gallery documents, and the
+  geographic plotting example imports NumPy before fitting its trend line.
+- `get_census()` cache keys now include geometry resolution and label mode,
+  use canonical request serialization, and carry a schema version so
+  incompatible legacy entries are not reused.
+- Public API functions preserve `CensusAPIError` subclasses such as
+  `RateLimitError`; exhausted network failures now raise `NetworkError`, which
+  remains catchable through the documented base exception.
+- Geography and vector responses must merge through complete, unique geographic
+  identifiers. Missing, duplicate, or unmatched identifiers now raise an error
+  instead of falling back to row-order alignment.
+
 ## [0.2.0] - 2026-06-12
 
 This release synchronizes pycancensus with R cancensus 0.6.1, porting its

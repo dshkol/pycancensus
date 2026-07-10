@@ -6,7 +6,7 @@ Each example demonstrates different aspects of working with Canadian Census data
 
 **Getting Started:**
 
-- If you're new to pycancensus, start with the :doc:`tutorials/getting_started` tutorial
+- If you're new to pycancensus, start with the :doc:`/tutorials/getting_started` tutorial
 - Get your free API key at `CensusMapper <https://censusmapper.ca/users/sign_up>`_
 - Set your API key: ``pycancensus.set_api_key("your_key_here")``
 

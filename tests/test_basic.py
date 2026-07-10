@@ -395,8 +395,8 @@ class TestGeoVectorsMerge:
         assert "name" in result.columns
         assert "geometry" in result.columns
 
-    def test_merge_fallback_by_index(self):
-        """Test fallback merge by index when no common key found."""
+    def test_merge_without_identifiers_raises(self):
+        """Never infer geographic correspondence from row order."""
         from pycancensus.core import _merge_geo_and_csv_results
 
         # Create mock data without common keys
@@ -414,11 +414,72 @@ class TestGeoVectorsMerge:
             }
         )
 
+        with pytest.raises(ValueError, match="no supported geographic identifier"):
+            _merge_geo_and_csv_results(geo_result, csv_result)
+
+    def test_merge_uses_identifiers_not_row_order(self):
+        """Vector values follow identifiers even when response order differs."""
+        from pycancensus.core import _merge_geo_and_csv_results
+
+        geo_result = gpd.GeoDataFrame(
+            {
+                "id": ["001", "002"],
+                "geometry": [None, None],
+            }
+        )
+        csv_result = pd.DataFrame(
+            {
+                "GeoUID": ["002", "001"],
+                "v_CA21_1": [200, 100],
+            }
+        )
+
         result = _merge_geo_and_csv_results(geo_result, csv_result)
 
-        # Should still merge by index
-        assert "v_CA21_1" in result.columns
         assert list(result["v_CA21_1"]) == [100, 200]
+
+    def test_merge_with_unmatched_identifier_raises(self):
+        from pycancensus.core import _merge_geo_and_csv_results
+
+        geo_result = gpd.GeoDataFrame({"id": ["001", "002"], "geometry": [None, None]})
+        csv_result = pd.DataFrame({"GeoUID": ["001"], "v_CA21_1": [100]})
+
+        with pytest.raises(ValueError, match="had no census match"):
+            _merge_geo_and_csv_results(geo_result, csv_result)
+
+    def test_merge_with_duplicate_identifier_raises(self):
+        from pycancensus.core import _merge_geo_and_csv_results
+
+        geo_result = gpd.GeoDataFrame({"id": ["001"], "geometry": [None]})
+        csv_result = pd.DataFrame({"GeoUID": ["001", "001"], "v_CA21_1": [100, 101]})
+
+        with pytest.raises(ValueError, match="duplicate identifiers"):
+            _merge_geo_and_csv_results(geo_result, csv_result)
+
+    def test_merge_with_extra_census_identifier_raises(self):
+        from pycancensus.core import _merge_geo_and_csv_results
+
+        geo_result = gpd.GeoDataFrame({"id": ["001"], "geometry": [None]})
+        csv_result = pd.DataFrame({"GeoUID": ["001", "002"], "v_CA21_1": [100, 200]})
+
+        with pytest.raises(ValueError, match="had no geography match"):
+            _merge_geo_and_csv_results(geo_result, csv_result)
+
+    @pytest.mark.parametrize("missing_side", ["geography", "census"])
+    def test_merge_with_missing_identifier_raises(self, missing_side):
+        from pycancensus.core import _merge_geo_and_csv_results
+
+        geo_ids = ["001", None] if missing_side == "geography" else ["001"]
+        census_ids = ["001", None] if missing_side == "census" else ["001"]
+        geo_result = gpd.GeoDataFrame(
+            {"id": geo_ids, "geometry": [None] * len(geo_ids)}
+        )
+        csv_result = pd.DataFrame(
+            {"GeoUID": census_ids, "v_CA21_1": [100] * len(census_ids)}
+        )
+
+        with pytest.raises(ValueError, match=f"missing identifiers in {missing_side}"):
+            _merge_geo_and_csv_results(geo_result, csv_result)
 
 
 class TestCache:

@@ -9,7 +9,7 @@ import pandas as pd
 import requests
 
 from .settings import get_api_key, CENSUSMAPPER_DATA_URL
-from .resilience import get_session
+from .resilience import CensusAPIError, NetworkError, get_session
 from .utils import validate_dataset
 from .cache import get_cached_data, cache_data, session_cache_get, session_cache_set
 
@@ -120,10 +120,12 @@ def list_census_regions(
 
         return df
 
+    except CensusAPIError:
+        raise
     except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"API request failed: {e}")
+        raise NetworkError(str(e)) from e
     except Exception as e:
-        raise RuntimeError(f"Failed to process API response: {e}")
+        raise RuntimeError(f"Failed to process API response: {e}") from e
 
 
 def search_census_regions(
