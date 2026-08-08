@@ -6,12 +6,18 @@ https://pycancensus.readthedocs.io/en/latest/llm_usage.html instead.)
 
 ## What this project is
 
-A production-grade Python port of the R
-[cancensus](https://github.com/mountainMath/cancensus) package for the
-CensusMapper Canadian Census API. **R compatibility is the north star**:
-function names, signatures, and behavior mirror R cancensus, and changes
-are cross-validated against it. When implementing or fixing anything,
-check the R implementation first (often checked out at `../cancensus`).
+pycancensus provides accurate, efficient, and easy-to-use Python access
+to Canadian Census data and geography through the CensusMapper API. It
+is a production-grade port of the R
+[cancensus](https://github.com/mountainMath/cancensus) package.
+
+Compatibility with R cancensus is an important project guarantee:
+shared function names, signatures, and behavior should mirror the R
+package, and relevant changes should be cross-validated against it.
+When implementing or fixing shared behavior, consult the
+[upstream R implementation](https://github.com/mountainMath/cancensus).
+A sibling checkout at `../cancensus` may be used when available, but
+must not be assumed to exist.
 
 ## Commands
 
