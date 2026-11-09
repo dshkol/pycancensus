@@ -125,10 +125,11 @@ Add support for national-level census data
 ### Code Guidelines
 
 **General Principles:**
-- **R compatibility is the north star**: function names, signatures, and
-  behavior mirror the R [cancensus](https://github.com/mountainMath/cancensus)
-  package; check the R implementation before changing ported behavior, and
-  cross-validate results against it where feasible
+- **R compatibility is an important project guarantee**: shared function
+  names, signatures, and behavior should mirror the R
+  [cancensus](https://github.com/mountainMath/cancensus) package; consult the
+  upstream R implementation before changing shared behavior, and
+  cross-validate relevant changes against it where feasible
 - All HTTP goes through `get_session()` from `resilience.py` — never raw `requests`
 - Identifier columns (region IDs, UIDs) are strings, never numeric
 - When adding a public function: export it in `__init__.py`'s `__all__`, add
