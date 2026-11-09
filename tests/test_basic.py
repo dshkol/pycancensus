@@ -91,6 +91,13 @@ class TestUtils:
         assert validate_dataset("CA16") == "CA16"
         assert validate_dataset("ca21") == "CA21"
         assert validate_dataset(" CA11 ") == "CA11"
+        # Non-census datasets keep CensusMapper's spelling
+        assert validate_dataset("CA1996") == "CA1996"
+        assert validate_dataset("ca16xsd") == "CA16xSD"
+        assert validate_dataset("tx2018") == "TX2018"
+        # Census years translate like R cancensus
+        assert validate_dataset("2021") == "CA21"
+        assert validate_dataset(1996) == "CA1996"
 
         # Invalid datasets
         with pytest.raises(ValueError):
@@ -99,6 +106,8 @@ class TestUtils:
             validate_dataset("CA")
         with pytest.raises(ValueError):
             validate_dataset(123)
+        with pytest.raises(ValueError):
+            validate_dataset("CA123")
 
     def test_validate_level(self):
         """Test level validation."""
