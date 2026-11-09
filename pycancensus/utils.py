@@ -58,7 +58,20 @@ def validate_level(level: str) -> str:
     ValueError
         If level is invalid.
     """
-    valid_levels = ["C", "Regions", "PR", "CMA", "CD", "CSD", "CT", "DA", "EA", "DB"]
+    valid_levels = [
+        "C",
+        "Regions",
+        "PR",
+        "CMA",
+        "CA",
+        "CMACA",
+        "CD",
+        "CSD",
+        "CT",
+        "DA",
+        "EA",
+        "DB",
+    ]
 
     if level not in valid_levels:
         raise ValueError(
@@ -95,7 +108,21 @@ def process_regions(
     if not regions:
         raise ValueError("At least one region must be specified")
 
-    valid_region_levels = ["C", "PR", "CMA", "CD", "CSD", "CT", "DA", "EA", "DB"]
+    # "CMA", "CA" and "CMACA" all name the same level, which holds both census
+    # metropolitan areas and census agglomerations (as in R cancensus 0.6.2)
+    valid_region_levels = [
+        "C",
+        "PR",
+        "CMA",
+        "CA",
+        "CMACA",
+        "CD",
+        "CSD",
+        "CT",
+        "DA",
+        "EA",
+        "DB",
+    ]
 
     processed = {}
     for level, ids in regions.items():

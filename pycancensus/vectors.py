@@ -4,6 +4,7 @@ Functions for working with census vectors (variables).
 
 import io
 import re
+import sys
 import warnings
 from typing import Optional
 
@@ -13,7 +14,14 @@ import requests
 from .settings import get_api_key, CENSUSMAPPER_API_URL
 from .resilience import CensusAPIError, NetworkError, get_session
 from .utils import validate_dataset
-from .cache import get_cached_data, cache_data, session_cache_get, session_cache_set
+from .cache import (
+    get_cached_data,
+    cache_data,
+    session_cache_get,
+    session_cache_set,
+    stamp_list_schema,
+    has_current_list_schema,
+)
 
 
 def label_vectors(x):
@@ -125,7 +133,7 @@ def list_census_vectors(
         if cached_data is not None:
             return cached_data
         cached_data = get_cached_data(cache_key)
-        if cached_data is not None:
+        if has_current_list_schema(cached_data):
             if not quiet:
                 print("Reading vectors from cache...")
             session_cache_set(cache_key, cached_data)
@@ -144,7 +152,8 @@ def list_census_vectors(
         )
 
         # Parse CSV response
-        df = pd.read_csv(io.StringIO(response.text))
+        # Decode as UTF-8 explicitly like R cancensus
+        df = pd.read_csv(io.StringIO(response.content.decode("utf-8")))
 
         # Rename columns to match expected format
         column_mapping = {
@@ -172,10 +181,11 @@ def list_census_vectors(
         if "parent_vector" in df.columns:
             df["parent_vector"] = df["parent_vector"].replace(["", "NA"], None)
 
-        # Cache the result
+        # Cache the result. A fresh download always replaces the cached copy,
+        # so use_cache=False refreshes a stale cache
+        stamp_list_schema(df)
         session_cache_set(cache_key, df)
-        if use_cache:
-            cache_data(cache_key, df)
+        cache_data(cache_key, df)
 
         if not quiet:
             print(f"✅ Retrieved {len(df)} vectors for {dataset}")
@@ -381,6 +391,11 @@ def _bounded_levenshtein(a: str, b: str, max_dist: int = 2) -> int:
     return previous[-1]
 
 
+# Splits a query into words of letters, keeping accented letters such as
+# "é" (R cancensus 0.6.2 uses [^[:alpha:]]+)
+_NON_LETTERS = r"[\W\d_]+"
+
+
 def _clean_text(text: str) -> str:
     """Lowercase, replace punctuation with spaces, collapse whitespace."""
     return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", text.lower())).strip()
@@ -393,7 +408,7 @@ def _semantic_search(
     details = vector_list["details"].fillna("")
     clean_details = [_clean_text(d) for d in details]
 
-    query_words = [w for w in re.split(r"[^a-z]+", query.lower()) if w]
+    query_words = [w for w in re.split(_NON_LETTERS, query.lower()) if w]
     word_count = max(len(query_words), 1)
 
     # Build word-count-length n-grams (suffix n-grams at sentence ends)
@@ -460,6 +475,14 @@ def _semantic_search(
     return result
 
 
+def _session_is_interactive() -> bool:
+    """Whether input() can prompt the user (stdin is a terminal)."""
+    try:
+        return sys.stdin is not None and sys.stdin.isatty()
+    except (AttributeError, ValueError):
+        return False
+
+
 def _keyword_search(
     query: str, vector_list: pd.DataFrame, interactive: bool = False
 ) -> pd.DataFrame:
@@ -476,7 +499,7 @@ def _keyword_search(
 
     # Drop empty tokens (e.g. from queries starting with a digit); an empty
     # regex alternative would match every vector
-    query_tokens = [t for t in re.split(r"[^a-z]+", query.lower()) if t]
+    query_tokens = [t for t in re.split(_NON_LETTERS, query.lower()) if t]
     if not query_tokens:
         warnings.warn(
             "No matches found. Please check spelling and try again or "
@@ -509,6 +532,13 @@ def _keyword_search(
     if other_res.empty or not interactive:
         return top_res
 
+    if not _session_is_interactive():
+        print(
+            f"{len(other_res)} additional keyword matches with less precision "
+            "are not shown since the session is not interactive."
+        )
+        return top_res
+
     print(top_res)
     answer = input(
         f"\nThere are {len(other_res)} additional keyword matches with less "
@@ -520,13 +550,17 @@ def _keyword_search(
     return top_res
 
 
-def explore_census_vectors(dataset: str = "CA16") -> None:
+def explore_census_vectors(dataset: str = "CA21") -> None:
     """
     Open the interactive CensusMapper variable explorer in a browser.
 
+    The explorer opens at https://censusmapper.ca/api, where the dataset is
+    picked; per-dataset links no longer resolve. ``dataset`` is still
+    validated for compatibility with R cancensus.
+
     Parameters
     ----------
-    dataset : str, default "CA16"
+    dataset : str, default "CA21"
         The dataset to explore vectors for.
     """
     import webbrowser
@@ -536,4 +570,4 @@ def explore_census_vectors(dataset: str = "CA16") -> None:
         "Opening interactive census variable explorer at censusmapper.ca/api "
         "in the browser"
     )
-    webbrowser.open(f"https://censusmapper.ca/api/{dataset}#api_variable")
+    webbrowser.open("https://censusmapper.ca/api")

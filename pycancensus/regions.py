@@ -11,7 +11,14 @@ import requests
 from .settings import get_api_key, CENSUSMAPPER_DATA_URL
 from .resilience import CensusAPIError, NetworkError, get_session
 from .utils import validate_dataset
-from .cache import get_cached_data, cache_data, session_cache_get, session_cache_set
+from .cache import (
+    get_cached_data,
+    cache_data,
+    session_cache_get,
+    session_cache_set,
+    stamp_list_schema,
+    has_current_list_schema,
+)
 
 
 def list_census_regions(
@@ -69,7 +76,7 @@ def list_census_regions(
         if cached_data is not None:
             return cached_data
         cached_data = get_cached_data(cache_key)
-        if cached_data is not None:
+        if has_current_list_schema(cached_data):
             if not quiet:
                 print("Reading regions from cache...")
             session_cache_set(cache_key, cached_data)
@@ -89,7 +96,9 @@ def list_census_regions(
         # R cancensus — pandas would otherwise infer them as floats
         # (e.g. CMA_UID 59933.0), silently breaking string comparisons
         df = pd.read_csv(
-            io.StringIO(response.text),
+            # Decode as UTF-8 explicitly like R cancensus, rather than trusting
+            # the charset header (a missing one garbles names like "Montréal")
+            io.StringIO(response.content.decode("utf-8")),
             dtype={
                 "geo_uid": str,
                 "CMA_UID": str,
@@ -110,10 +119,16 @@ def list_census_regions(
 
         df = df.rename(columns=column_mapping)
 
-        # Cache the result
+        # Census agglomerations come back as "CMA" with municipal status "K";
+        # label them "CA" like R cancensus
+        is_ca = (df["level"] == "CMA") & (df["municipal_status"] == "K")
+        df.loc[is_ca, "level"] = "CA"
+
+        # Cache the result. A fresh download always replaces the cached copy,
+        # so use_cache=False refreshes a stale cache
+        stamp_list_schema(df)
         session_cache_set(cache_key, df)
-        if use_cache:
-            cache_data(cache_key, df)
+        cache_data(cache_key, df)
 
         if not quiet:
             print(f"Retrieved {len(df)} regions")
@@ -267,6 +282,10 @@ def explore_census_regions(dataset: str = "CA16") -> None:
     """
     Open the interactive CensusMapper region explorer in a browser.
 
+    The explorer opens at https://censusmapper.ca/api, where the dataset is
+    picked; per-dataset links no longer resolve. ``dataset`` is still
+    validated for compatibility with R cancensus.
+
     Parameters
     ----------
     dataset : str, default "CA16"
@@ -279,4 +298,4 @@ def explore_census_regions(dataset: str = "CA16") -> None:
         "Opening interactive census region explorer at censusmapper.ca/api "
         "in the browser"
     )
-    webbrowser.open(f"https://censusmapper.ca/api/{dataset}#api_region")
+    webbrowser.open("https://censusmapper.ca/api")

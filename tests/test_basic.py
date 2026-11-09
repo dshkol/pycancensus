@@ -169,6 +169,7 @@ Toronto,35535,CMA,5928040,,,35"""
 
         mock_response = MagicMock()
         mock_response.text = csv_response
+        mock_response.content = mock_response.text.encode("utf-8")
         mock_session = MagicMock()
         mock_session.get.return_value = mock_response
         mock_get_session.return_value = mock_session
@@ -194,6 +195,7 @@ v_CA16_2,Total population Male,Male,Number,additive,v_CA16_1,Male population for
 
         mock_response = MagicMock()
         mock_response.text = csv_response
+        mock_response.content = mock_response.text.encode("utf-8")
         mock_session = MagicMock()
         mock_session.get.return_value = mock_response
         mock_get_session.return_value = mock_session

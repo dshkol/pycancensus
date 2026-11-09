@@ -42,7 +42,7 @@ def get_recalled_database(refresh: bool = False) -> Optional[pd.DataFrame]:
 
     try:
         response = get_session().get(f"{CENSUSMAPPER_API_URL}/recall.csv")
-        data = pd.read_csv(io.StringIO(response.text), dtype=str)
+        data = pd.read_csv(io.StringIO(response.content.decode("utf-8")), dtype=str)
     except Exception:
         warnings.warn("Unable to download recall database at this point.")
         return None

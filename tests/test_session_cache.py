@@ -10,6 +10,7 @@ from pycancensus.cache import (
     remove_from_cache,
     session_cache_get,
     session_cache_set,
+    stamp_list_schema,
 )
 from pycancensus.vectors import list_census_vectors
 
@@ -84,6 +85,7 @@ class TestListVectorsSessionCache:
             "vector,type,label,units,add,parent,details\n"
             "v_CA21_1,Total,Population,Number,1,,Population\n"
         )
+        response.content = response.text.encode("utf-8")
         session = MagicMock()
         session.get.return_value = response
         mock_get_session.return_value = session
@@ -101,7 +103,7 @@ class TestListVectorsSessionCache:
     def test_file_cache_hit_populates_session_cache(
         self, mock_key, mock_file_cache, mock_get_session
     ):
-        mock_file_cache.return_value = make_vectors_df()
+        mock_file_cache.return_value = stamp_list_schema(make_vectors_df())
 
         list_census_vectors("CA21", quiet=True)
         list_census_vectors("CA21", quiet=True)
@@ -121,6 +123,7 @@ class TestListVectorsSessionCache:
             "vector,type,label,units,add,parent,details\n"
             "v_CA21_1,Total,Population,Number,1,,Population\n"
         )
+        response.content = response.text.encode("utf-8")
         session = MagicMock()
         session.get.return_value = response
         mock_get_session.return_value = session

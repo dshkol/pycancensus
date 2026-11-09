@@ -13,6 +13,7 @@ VALID_CSV = 'GeoUID,Type,"Region Name",Population\n' '5915022,CSD,"Vancouver",66
 def make_response(text):
     response = MagicMock()
     response.text = text
+    response.content = response.text.encode("utf-8")
     return response
 
 

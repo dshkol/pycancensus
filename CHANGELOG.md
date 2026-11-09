@@ -30,6 +30,32 @@ All notable changes to pycancensus will be documented in this file.
 - Geography and vector responses must merge through complete, unique geographic
   identifiers. Missing, duplicate, or unmatched identifiers now raise an error
   instead of falling back to row-order alignment.
+- `get_census()` accepts `"CA"` and `"CMACA"` in addition to `"CMA"`, both for
+  `level` and as `regions` keys; all three name the level holding census
+  metropolitan areas and census agglomerations (R cancensus 0.6.2, #208).
+  `list_census_regions()` now labels census agglomerations `"CA"` like R, so
+  they pass through `as_census_region_list()` to `get_census()`.
+- `list_census_regions()` and `list_census_vectors()` with `use_cache=False`
+  now replace the cached copy, matching `get_census()`; before, a refresh
+  never updated the cache. Lists cached by earlier versions are downloaded
+  again once, which also clears stale copies with garbled names or numeric
+  region IDs.
+- Region names, vector details, data and the recall database are decoded as
+  UTF-8 regardless of the response's charset header, like R; names such as
+  "Montréal" could come out as "MontrÃ©al".
+- `get_census()` raises `ValueError` for invalid `labels` values instead of
+  treating them like `"detailed"` (R cancensus 0.6.2).
+- `label_vectors()` works on GeoDataFrame results of `get_census()` with
+  vectors; merging geometry and data dropped the vector metadata (R cancensus
+  0.6.2).
+- `find_census_vectors()` keyword and semantic search no longer drop accented
+  letters such as "é" from the query (R cancensus 0.6.2).
+- `find_census_vectors(query_type="keyword", interactive=True)` no longer
+  fails with `EOFError` outside a terminal; it returns the top matches and
+  reports how many less precise matches were left out (R cancensus 0.6.2).
+- `explore_census_vectors()` and `explore_census_regions()` open
+  https://censusmapper.ca/api, as the per-dataset links no longer resolve;
+  `explore_census_vectors()` defaults to CA21 (R cancensus 0.6.2).
 
 ## [0.2.0] - 2026-06-12
 

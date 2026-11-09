@@ -21,6 +21,7 @@ from .progress import show_request_preview, create_progress_for_request
 
 
 _CACHE_SCHEMA_VERSION = 2
+VALID_LABELS = ("detailed", "short")
 
 
 def get_census(
@@ -53,7 +54,10 @@ def get_census(
         If None, only geographic data will be downloaded.
     level : str, default 'Regions'
         The census aggregation level to retrieve. One of 'Regions', 'PR',
-        'CMA', 'CD', 'CSD', 'CT', 'DA', 'EA' (for 1996), or 'DB' (for 2001-2021).
+        'CMA', 'CA', 'CMACA', 'CD', 'CSD', 'CT', 'DA', 'EA' (for 1996), or
+        'DB' (for 2001-2021). 'CMA', 'CA' and 'CMACA' all refer to the same
+        level, which contains both census metropolitan areas and census
+        agglomerations.
     geo_format : str, optional
         Format for geographic information. Set to 'geopandas' to return a
         GeoDataFrame with geometry. If None, returns DataFrame without geometry.
@@ -98,6 +102,11 @@ def get_census(
     # Validate inputs
     dataset = validate_dataset(dataset)
     level = validate_level(level)
+    if labels not in VALID_LABELS:
+        raise ValueError(
+            f"Invalid labels: {labels!r}. Must be one of "
+            f"{', '.join(repr(v) for v in VALID_LABELS)}."
+        )
 
     if api_key is None:
         api_key = get_api_key()
@@ -218,7 +227,9 @@ def get_census(
                 result = _process_geojson_response(data, vectors, labels)
             else:
                 # data.csv returns CSV
-                result = _process_csv_response(response.text, vectors, labels)
+                result = _process_csv_response(
+                    response.content.decode("utf-8"), vectors, labels
+                )
 
         # Cache the result. use_cache=False means "don't read stale data",
         # not "don't cache": a forced refresh still updates the cache,
@@ -333,7 +344,9 @@ def _fetch_census_with_geometry_and_vectors(
     csv_multipart_data = {key: (None, value) for key, value in request_data.items()}
     csv_response = get_session().post(f"{base_url}data.csv", files=csv_multipart_data)
     data_version = csv_response.headers.get("data-version")
-    csv_result = _process_csv_response(csv_response.text, vectors, labels)
+    csv_result = _process_csv_response(
+        csv_response.content.decode("utf-8"), vectors, labels
+    )
 
     # 3. Merge the results on geographic identifier
     return _merge_geo_and_csv_results(geo_result, csv_result), data_version, geo_version
@@ -436,6 +449,11 @@ def _merge_geo_and_csv_results(
     result = result.drop(columns=["_merge"])
     if merge_key_csv != merge_key_geo and merge_key_csv in result.columns:
         result = result.drop(columns=[merge_key_csv])
+
+    # The merge keeps the geometry frame's attrs, which lack the vector
+    # metadata that label_vectors() reads (R cancensus 0.6.2 fix)
+    if "census_vectors" in csv_result.attrs:
+        result.attrs["census_vectors"] = csv_result.attrs["census_vectors"]
 
     return result
 

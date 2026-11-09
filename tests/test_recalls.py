@@ -65,6 +65,7 @@ class TestGetRecalledDatabase:
     def test_downloads_and_session_caches(self, mock_get_session):
         response = MagicMock()
         response.text = RECALL_CSV
+        response.content = response.text.encode("utf-8")
         session = MagicMock()
         session.get.return_value = response
         mock_get_session.return_value = session
