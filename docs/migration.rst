@@ -135,6 +135,8 @@ Core Syntax Differences
      - ``{'CMA': '59933'}``
    * - ``c("v1", "v2", "v3")``
      - ``['v1', 'v2', 'v3']``
+   * - ``c(pop = "v_CA21_1")``
+     - ``{'pop': 'v_CA21_1'}``
    * - ``TRUE`` / ``FALSE``
      - ``True`` / ``False``
    * - ``NULL``
@@ -159,10 +161,14 @@ R cancensus 0.6.2. ``language`` is also a parameter of
   set them without code changes.
 * The default of ``labels`` is planned to change to ``"labelled"``, as in R.
   Pass ``labels`` or call ``set_labels()`` to keep code working.
-* R lets you name columns by naming ``vectors``
-  (``c(pop = "v_CA21_1")``); pycancensus takes a plain list of vectors,
-  so the R rule that gives clashing columns a trailing underscore
-  (e.g. ``Population_``) does not apply.
+* Named vectors: R's ``vectors = c(pop = "v_CA21_1")`` is
+  ``vectors={"pop": "v_CA21_1"}``. As in R, once any vector is named the
+  other vector columns are named by code, and with ``labels="labelled"`` a
+  name that clashes with a standard column renames that column with a
+  trailing underscore (``Population_``); other label modes raise an error.
+* Regions: ``list_census_regions()`` labels census agglomerations
+  ``"CA"`` like R, and ``"CMA"``, ``"CA"`` and ``"CMACA"`` are
+  interchangeable as ``level`` and ``regions`` keys in ``get_census()``.
 
 .. code-block:: r
 

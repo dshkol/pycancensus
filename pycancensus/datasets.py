@@ -122,8 +122,8 @@ def get_dataset_attribution(dataset: str) -> str:
 
     Examples
     --------
-    >>> import pycancensus as pc
-    >>> attribution = pc.get_dataset_attribution("CA16")
+    >>> from pycancensus.datasets import get_dataset_attribution
+    >>> attribution = get_dataset_attribution("CA16")
     >>> print(attribution)
     """
     datasets_df = list_census_datasets(quiet=True)

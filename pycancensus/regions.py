@@ -47,7 +47,8 @@ def list_census_regions(
         DataFrame with columns:
         - region: The region identifier
         - name: The name of that region
-        - level: The census aggregation level of that region
+        - level: The census aggregation level of that region; census
+          agglomerations are "CA", census metropolitan areas "CMA"
         - pop: The population of that region
         - municipal_status: Additional identifiers for municipal status
         - CMA_UID: The identifier for the Census Metropolitan Area (if any)
@@ -161,7 +162,9 @@ def search_census_regions(
     dataset : str
         The dataset to search in (e.g., 'CA16').
     level : str, optional
-        Filter by census aggregation level.
+        Filter by census aggregation level. This is an exact match on the
+        ``level`` column, so "CMA" does not include census agglomerations
+        ("CA").
     use_cache : bool, default True
         If True, uses cached region list if available.
     quiet : bool, default False

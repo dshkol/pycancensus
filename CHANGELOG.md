@@ -2,9 +2,44 @@
 
 All notable changes to pycancensus will be documented in this file.
 
-## [Unreleased]
+## [0.3.0] - 2026-11-08
+
+This release synchronizes pycancensus with R cancensus 0.6.2: the client now
+identifies itself to the CensusMapper API, labels are available in French,
+`get_census()` gains R's `labels = "labelled"` mode and named vectors, and all
+CensusMapper datasets can be requested. StatCan WDS and original-geography
+support is planned for 0.4.0.
+
+### Breaking Changes
+
+- Python 3.8 and 3.9 are no longer supported; pycancensus requires Python
+  3.10 or newer. Both versions are end-of-life. CI tests Python 3.10–3.13.
+- `list_census_regions()` labels census agglomerations `"CA"` instead of
+  `"CMA"`, like R. Code that filters `level == "CMA"` to get both census
+  metropolitan areas and census agglomerations should use
+  `level.isin(["CMA", "CA"])`. `get_census()` accepts `"CMA"`, `"CA"` and
+  `"CMACA"` interchangeably.
+- `get_census()` raises `ValueError` for invalid `labels` values; they were
+  treated like `"detailed"` before.
+- `explore_census_vectors()` defaults to CA21, and both explorer functions
+  open https://censusmapper.ca/api, as the per-dataset links no longer
+  resolve (R cancensus 0.6.2).
 
 ### Improvements
+
+- `get_census()` accepts named vectors as a dict mapping column names to
+  vector codes, e.g. `vectors={"pop": "v_CA21_1"}`, the equivalent of R's
+  `vectors = c(pop = "v_CA21_1")`. Once any vector is named, the other vector
+  columns are named by vector code. With `labels="labelled"` a named column
+  keeps its variable's label, and a standard column with the same name gets a
+  trailing underscore (e.g. `Population_`); other label modes raise an error
+  for such clashes. Naming is applied after the cache read, so it doesn't
+  download again.
+- All CensusMapper datasets can be requested: the 1996 census (`CA1996`),
+  the cross-tabulations (`CA01xSD` to `CA16xSD`) and the taxfiler datasets
+  (`TX2000` to `TX2018`). Dataset IDs match case-insensitively, and census
+  years translate like R (`2021` -> `CA21`). Before, only four-character
+  `CA..` IDs were accepted.
 
 - French labels (port of R cancensus 0.6.2, #229): `get_census()`,
   `list_census_vectors()`, `parent_census_vectors()`, `child_census_vectors()`,
@@ -65,10 +100,9 @@ All notable changes to pycancensus will be documented in this file.
   identifiers. Missing, duplicate, or unmatched identifiers now raise an error
   instead of falling back to row-order alignment.
 - `get_census()` accepts `"CA"` and `"CMACA"` in addition to `"CMA"`, both for
-  `level` and as `regions` keys; all three name the level holding census
-  metropolitan areas and census agglomerations (R cancensus 0.6.2, #208).
-  `list_census_regions()` now labels census agglomerations `"CA"` like R, so
-  they pass through `as_census_region_list()` to `get_census()`.
+  `level` and as `regions` keys (R cancensus 0.6.2, #208), so census
+  agglomerations from `list_census_regions()` pass through
+  `as_census_region_list()` to `get_census()`.
 - `list_census_regions()` and `list_census_vectors()` with `use_cache=False`
   now replace the cached copy, matching `get_census()`; before, a refresh
   never updated the cache. Lists cached by earlier versions are downloaded
@@ -77,8 +111,6 @@ All notable changes to pycancensus will be documented in this file.
 - Region names, vector details, data and the recall database are decoded as
   UTF-8 regardless of the response's charset header, like R; names such as
   "Montréal" could come out as "MontrÃ©al".
-- `get_census()` raises `ValueError` for invalid `labels` values instead of
-  treating them like `"detailed"` (R cancensus 0.6.2).
 - `label_vectors()` works on GeoDataFrame results of `get_census()` with
   vectors; merging geometry and data dropped the vector metadata (R cancensus
   0.6.2).
@@ -87,9 +119,8 @@ All notable changes to pycancensus will be documented in this file.
 - `find_census_vectors(query_type="keyword", interactive=True)` no longer
   fails with `EOFError` outside a terminal; it returns the top matches and
   reports how many less precise matches were left out (R cancensus 0.6.2).
-- `explore_census_vectors()` and `explore_census_regions()` open
-  https://censusmapper.ca/api, as the per-dataset links no longer resolve;
-  `explore_census_vectors()` defaults to CA21 (R cancensus 0.6.2).
+- `get_census(quiet=True)` no longer prints the "Downloading ..." progress
+  line for larger requests.
 
 ## [0.2.0] - 2026-06-12
 

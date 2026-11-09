@@ -11,27 +11,31 @@ Access, retrieve, and work with Canadian Census data and geography.
 
 **pycancensus** is a Python package that provides integrated, convenient, and uniform access to Canadian Census data and geography retrieved using the CensusMapper API. This package produces analysis-ready tidy DataFrames and spatial data in multiple formats, with full equivalence to the R cancensus library.
 
-## What's New in 0.2.0
+## What's New in 0.3.0
 
-Synchronized with R cancensus 0.6.1 — see [CHANGELOG.md](CHANGELOG.md) for details:
+Synchronized with R cancensus 0.6.2 — see [CHANGELOG.md](CHANGELOG.md) for details:
 
-- **Full hierarchy traversal**: `parent/child_census_vectors()` return complete
-  ancestor/descendant trees, verified identical to R
-- **Semantic variable search**: typo-tolerant `find_census_vectors(query_type="semantic")`,
-  now with the R-parity signature `(query, dataset, ...)` (breaking change)
-- **StatCan recall detection**: cached data is checked against published data recalls
-- **New helpers**: `visualize_vector_hierarchy()`, `as_census_region_list()`,
-  `add_unique_names_to_region_list()`, `explore_census_vectors()/regions()`
-- **Reliability**: retries honor Retry-After; error payloads can no longer poison
-  the cache; in-memory session cache for metadata
+- **French labels**: `language="fr"` on `get_census()`, `list_census_vectors()`,
+  `find_census_vectors()` and the hierarchy functions, or `pc.set_language("fr")`
+  for the session
+- **`labels="labelled"`**: vector columns named by code, standard column names
+  (`Name`, `Area`, `Population`, ...) across datasets, and labels in
+  `df.attrs["column_labels"]`
+- **Named vectors**: `vectors={"pop": "v_CA21_1"}` names the column `pop`
+- **All datasets**: the 1996 census (`CA1996`), cross-tabulations (`CA16xSD`)
+  and taxfiler data (`TX2018`) now work; census agglomerations are level `"CA"`
+- **Client identification**: requests identify pycancensus in the user agent;
+  tools built on it can add their own name with `pc.set_user_agent_prefix()`
+- **Requires Python 3.10+** (3.8 and 3.9 dropped)
 
 ## Features
 
 ### Data Access
 * Download Census data and geography in analysis-ready format
 * Support for multiple Census years: 2021, 2016, 2011, 2006, 2001, 1996
-* All Census geographic levels: PR, CMA, CD, CSD, CT, DA, EA, DB
-* Taxfiler data at Census Tract level (2000-2018)
+* All Census geographic levels: PR, CMA/CA, CD, CSD, CT, DA, EA, DB
+* Taxfiler (TX2000-TX2018) and census cross-tabulation (CA01xSD-CA16xSD) datasets
+* French variable labels (`language="fr"`) and `labels="labelled"` columns
 
 ### Variable Discovery
 * `list_census_vectors()` - Browse all available variables
@@ -132,7 +136,7 @@ related_vars = pc.child_census_vectors("v_CA21_1", dataset="CA21")
 data = pc.get_census(
     dataset="CA21",
     regions={"CMA": "35535"},  # Toronto CMA  
-    vectors=["v_CA21_1", "v_CA21_2", "v_CA21_3"],  # Population by gender
+    vectors=["v_CA21_1", "v_CA21_2", "v_CA21_3"],  # Population 2021, 2016, % change
     level="CSD"
 )
 
@@ -188,8 +192,9 @@ except CensusAPIError as e:
 pycancensus includes comprehensive testing to ensure reliability and R equivalence:
 
 ### Unit Testing
-- **114 unit tests** covering retry behavior, hierarchy traversal, search modes,
-  caching semantics, recall detection, and region helpers
+- **224 unit tests** covering retry behavior, user agent, hierarchy traversal,
+  search modes, labels and language, named vectors, caching semantics, recall
+  detection, and region helpers
 - CI runs on Python 3.10–3.13 with formatting and lint checks
 
 ### Cross-Validation with R cancensus
@@ -232,7 +237,7 @@ If you use pycancensus in your research, please cite it (see
 [CITATION.cff](CITATION.cff), or use GitHub's "Cite this repository" button):
 
 > Shkolnik, D. and J. von Bergmann (2026). pycancensus: access, retrieve,
-> and work with Canadian Census data and geography in Python. v0.2.0.
+> and work with Canadian Census data and geography in Python. v0.3.0.
 > https://github.com/dshkol/pycancensus
 
 ## License

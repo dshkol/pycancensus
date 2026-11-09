@@ -58,7 +58,8 @@ def get_census(
     Parameters
     ----------
     dataset : str
-        A CensusMapper dataset identifier (e.g., 'CA16', 'CA21').
+        A CensusMapper dataset identifier, e.g. 'CA21', 'CA16xSD' or
+        'TX2018', or a census year such as 2021 (see list_census_datasets()).
     regions : dict
         A dictionary of census regions to retrieve. Keys must be valid census
         aggregation levels.
@@ -76,8 +77,8 @@ def get_census(
         labels such a name is an error. :func:`label_vectors` still reports
         vector codes.
     level : str, default 'Regions'
-        The census aggregation level to retrieve. One of 'Regions', 'PR',
-        'CMA', 'CA', 'CMACA', 'CD', 'CSD', 'CT', 'DA', 'EA' (for 1996), or
+        The census aggregation level to retrieve. One of 'Regions', 'C',
+        'PR', 'CMA', 'CA', 'CMACA', 'CD', 'CSD', 'CT', 'DA', 'EA' (for 1996), or
         'DB' (for 2001-2021). 'CMA', 'CA' and 'CMACA' all refer to the same
         level, which contains both census metropolitan areas and census
         agglomerations.
@@ -160,6 +161,15 @@ def get_census(
     ...     labels='labelled'
     ... )
     >>> data.attrs["column_labels"]["v_CA16_408"]
+
+    >>> # Name columns by naming vectors
+    >>> data = pc.get_census(
+    ...     dataset='CA21',
+    ...     regions={'CMA': '59933'},
+    ...     vectors={'pop': 'v_CA21_1'},
+    ...     level='CSD',
+    ...     labels='short'
+    ... )
 
     >>> # Get the labels in French
     >>> data = pc.get_census(

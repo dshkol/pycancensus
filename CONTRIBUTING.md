@@ -289,8 +289,8 @@ Should return national-level census data for Canada
 Raises ValueError: Invalid level: C
 
 **Environment**
-- pycancensus 0.1.0
-- Python 3.9.6
+- pycancensus 0.3.0
+- Python 3.12.4
 - macOS 12.0
 ```
 
