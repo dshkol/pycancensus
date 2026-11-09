@@ -67,7 +67,7 @@ export CANCENSUS_API_KEY="..."  # required for live API calls
   feasible.
 - Format with black (pinned `<26`) before committing; CI runs
   `black --check`.
-- CI: every PR runs tests on Python 3.8–3.11, a docs build, and a live
+- CI: every PR runs tests on Python 3.10–3.13, a docs build, and a live
   example validator. The validate job and tutorials hit the real API.
 
 ## Gotchas
