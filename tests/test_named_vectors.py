@@ -120,3 +120,38 @@ def test_quiet_suppresses_progress_output(capsys):
         with patch("pycancensus.core._download_census", return_value=DETAILED.copy()):
             census(["v_CA21_1"], "detailed")
     assert capsys.readouterr().out == ""
+
+
+class TestLabelsDefaultWithoutLabelsParameter:
+    """Callers that can't pass labels shouldn't trigger the default notice."""
+
+    def test_get_census_geometry_shows_no_notice(self, capsys):
+        with patch("pycancensus.geometry.get_census") as get_census:
+            pc.get_census_geometry("CA21", regions={"CSD": "5915022"})
+        assert get_census.call_args.kwargs["labels"] == "detailed"
+        assert "planned to change" not in capsys.readouterr().err
+
+    def test_get_census_geometry_follows_session_default(self):
+        pc.set_labels("labelled")
+        with patch("pycancensus.geometry.get_census") as get_census:
+            pc.get_census_geometry("CA21", regions={"CSD": "5915022"})
+        assert get_census.call_args.kwargs["labels"] == "labelled"
+
+    @pytest.mark.parametrize(
+        "extra, expected",
+        [([], "detailed"), (["--labels", "labelled"], "labelled")],
+    )
+    def test_cli_get_data_passes_labels(self, extra, expected, monkeypatch):
+        from pycancensus import cli, settings
+
+        # --api-key sets the session key; restore it after the test
+        monkeypatch.setattr(settings, "_API_KEY", settings._API_KEY)
+        argv = ["pycancensus", "--api-key", "k", "--quiet", "get-data", "CA21"]
+        argv += ["--regions", '{"CSD": "5915022"}', "--vectors", "v_CA21_1"]
+        monkeypatch.setattr("sys.argv", argv + extra)
+        with patch("pycancensus.get_census", return_value=DETAILED.copy()) as gc:
+            try:
+                cli.main()
+            except SystemExit:
+                pass
+        assert gc.call_args.kwargs["labels"] == expected

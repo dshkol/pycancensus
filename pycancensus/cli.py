@@ -79,6 +79,14 @@ Or get a free key at: https://censusmapper.ca/users/sign_up
     get_data_parser.add_argument("--vectors", help="Comma-separated list of vector IDs")
     get_data_parser.add_argument("--level", default="Regions", help="Aggregation level")
     get_data_parser.add_argument("--geo", action="store_true", help="Include geometry")
+    get_data_parser.add_argument(
+        "--labels",
+        choices=["detailed", "short", "labelled"],
+        help="Column naming (default: PYCANCENSUS_LABELS, else 'detailed')",
+    )
+    get_data_parser.add_argument(
+        "--language", choices=["en", "fr"], help="Language of labels"
+    )
     get_data_parser.add_argument("--output", help="Output file path (CSV or GeoJSON)")
 
     args = parser.parse_args()
@@ -148,6 +156,8 @@ Or get a free key at: https://censusmapper.ca/users/sign_up
                 vectors=vectors,
                 level=args.level,
                 geo_format=geo_format,
+                labels=args.labels or pc.get_labels() or "detailed",
+                language=args.language,
                 use_cache=use_cache,
                 quiet=quiet,
             )

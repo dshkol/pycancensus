@@ -45,6 +45,8 @@ print("pycancensus Cache System:")
 print("="*30)
 print("• Automatic caching of all API responses")
 print("• Unique cache keys based on request parameters")
+print("• Labels, language and vector names are applied after the cache read,")
+print("  so switching them reuses cached data instead of downloading again")
 print("• Persistent storage between sessions")
 print("• Configurable cache location")
 print("• Cache management tools")
@@ -106,7 +108,8 @@ try:
         dataset="CA21",
         regions={"CMA": "59933"},  # Vancouver
         vectors=["v_CA21_1", "v_CA21_434"],
-        level="CSD"
+        level="CSD",
+        labels="short"
     )
 
     first_time = time.time() - start_time
@@ -121,7 +124,8 @@ try:
         dataset="CA21",
         regions={"CMA": "59933"},
         vectors=["v_CA21_1", "v_CA21_434"],
-        level="CSD"
+        level="CSD",
+        labels="short"
     )
 
     second_time = time.time() - start_time
@@ -219,6 +223,7 @@ try:
         regions={"PR": "59"},  # British Columbia
         vectors=["v_CA21_1"],
         level="PR",
+        labels="short",
         use_cache=False  # Skip stale cache, re-download, refresh cache
     )
 
@@ -236,6 +241,10 @@ additionally held in an in-memory session cache: repeated calls within the
 same Python session skip the disk entirely, which makes hierarchy
 navigation and variable search snappy. The session cache is invalidated
 automatically by `remove_from_cache()` and `clear_cache()`.
+
+`use_cache=False` works the same way for these lists as for `get_census()`:
+it downloads a fresh copy and replaces the cached one. Lists cached by an
+older version of pycancensus are downloaded again automatically.
 
 ### Cache Behavior
 
@@ -349,8 +358,8 @@ For applications that frequently access certain data, preload it into cache:
 # Strategy for preloading frequently used data
 common_datasets = ["CA21", "CA16"]
 major_cmas = {
-    "Toronto": "535",
-    "Montreal": "462",
+    "Toronto": "35535",
+    "Montreal": "24462",
     "Vancouver": "59933",
     "Calgary": "825",
     "Ottawa": "505"
@@ -367,7 +376,8 @@ for city, cma_code in list(major_cmas.items())[:2]:  # Show 2 examples
     dataset="CA21",
     regions={{"CMA": "{cma_code}"}},
     vectors=["v_CA21_1", "v_CA21_434"],  # Common vectors
-    level="CSD"
+    level="CSD",
+    labels="short"
 )""")
     print()
 
@@ -402,7 +412,7 @@ def efficient_census_analysis(regions_list, vectors_list):
 
 # Example usage
 result = efficient_census_analysis(
-    regions_list=["535", "462", "59933"],  # Toronto, Montreal, Vancouver
+    regions_list=["35535", "24462", "59933"],  # Toronto, Montreal, Vancouver
     vectors_list=["v_CA21_1", "v_CA21_434"]
 )
 ```

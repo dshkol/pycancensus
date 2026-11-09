@@ -45,6 +45,7 @@ def list_census_regions(
     -------
     pd.DataFrame
         DataFrame with columns:
+
         - region: The region identifier
         - name: The name of that region
         - level: The census aggregation level of that region; census

@@ -32,9 +32,10 @@ try:
     geo_data = pc.get_census(
         dataset="CA21",
         regions={"CMA": "59933"},  # Vancouver CMA
-        vectors=["v_CA21_1", "v_CA21_434"],  # Population and median income
+        vectors=["v_CA21_1", "v_CA21_906"],  # Population and median household income
         level="CT",  # Census Tract level for detailed analysis
-        geo_format="geopandas"
+        geo_format="geopandas",
+        labels="short",  # name vector columns by code, e.g. v_CA21_1
     )
     
     print(f"Retrieved {len(geo_data)} census tracts")
@@ -78,7 +79,7 @@ plt.show()
 # 
 # Let's compare two variables: population and median income.
 
-if 'v_CA21_1' in geo_data.columns and 'v_CA21_434' in geo_data.columns:
+if 'v_CA21_1' in geo_data.columns and 'v_CA21_906' in geo_data.columns:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
     
     # Population map
@@ -94,7 +95,7 @@ if 'v_CA21_1' in geo_data.columns and 'v_CA21_434' in geo_data.columns:
     
     # Median income map
     geo_data.plot(
-        column='v_CA21_434',
+        column='v_CA21_906',
         cmap='YlGnBu', 
         legend=True,
         ax=ax2,
@@ -114,7 +115,7 @@ if 'v_CA21_1' in geo_data.columns and 'v_CA21_434' in geo_data.columns:
 # 
 # Let's perform some basic statistical analysis on our geographic data.
 
-if 'v_CA21_1' in geo_data.columns and 'v_CA21_434' in geo_data.columns:
+if 'v_CA21_1' in geo_data.columns and 'v_CA21_906' in geo_data.columns:
     print("\nStatistical Summary:")
     print("="*50)
     
@@ -127,7 +128,7 @@ if 'v_CA21_1' in geo_data.columns and 'v_CA21_434' in geo_data.columns:
     print(f"  Range: {pop_stats['min']:.0f} - {pop_stats['max']:.0f}")
     
     # Income statistics
-    income_stats = geo_data['v_CA21_434'].describe()
+    income_stats = geo_data['v_CA21_906'].describe()
     print(f"\nMedian Income Statistics:")
     print(f"  Mean: ${income_stats['mean']:,.0f}")
     print(f"  Median: ${income_stats['50%']:,.0f}")
@@ -135,7 +136,7 @@ if 'v_CA21_1' in geo_data.columns and 'v_CA21_434' in geo_data.columns:
     print(f"  Range: ${income_stats['min']:,.0f} - ${income_stats['max']:,.0f}")
     
     # Correlation analysis
-    correlation = geo_data['v_CA21_1'].corr(geo_data['v_CA21_434'])
+    correlation = geo_data['v_CA21_1'].corr(geo_data['v_CA21_906'])
     print(f"\nCorrelation between Population and Income: {correlation:.3f}")
 
 # %%
@@ -144,12 +145,12 @@ if 'v_CA21_1' in geo_data.columns and 'v_CA21_434' in geo_data.columns:
 # 
 # Let's visualize the relationship between population and income.
 
-if 'v_CA21_1' in geo_data.columns and 'v_CA21_434' in geo_data.columns:
+if 'v_CA21_1' in geo_data.columns and 'v_CA21_906' in geo_data.columns:
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     
     scatter = ax.scatter(
         geo_data['v_CA21_1'], 
-        geo_data['v_CA21_434'],
+        geo_data['v_CA21_906'],
         c=geo_data['v_CA21_1'],
         cmap='viridis',
         alpha=0.7,
@@ -164,11 +165,12 @@ if 'v_CA21_1' in geo_data.columns and 'v_CA21_434' in geo_data.columns:
     cbar = plt.colorbar(scatter, ax=ax)
     cbar.set_label('Population')
     
-    # Add trend line
-    z = np.polyfit(geo_data['v_CA21_1'], geo_data['v_CA21_434'], 1)
+    # Add trend line (income is suppressed for some tracts, so skip those)
+    complete = geo_data[['v_CA21_1', 'v_CA21_906']].dropna()
+    z = np.polyfit(complete['v_CA21_1'], complete['v_CA21_906'], 1)
     p = np.poly1d(z)
-    ax.plot(geo_data['v_CA21_1'], p(geo_data['v_CA21_1']), 
-            "r--", alpha=0.8, linewidth=2)
+    x = np.sort(complete['v_CA21_1'].to_numpy())
+    ax.plot(x, p(x), "r--", alpha=0.8, linewidth=2)
     
     plt.tight_layout()
     plt.show()

@@ -4,6 +4,21 @@ R Equivalence Validation
 This document provides validation results comparing **pycancensus** (Python) with **cancensus** (R),
 demonstrating feature parity through real-world examples extracted from the R package documentation.
 
+.. note::
+
+   The results on this page come from a run in October 2025, before
+   pycancensus 0.2.0. The examples below have been updated to the current API,
+   and on November 8, 2026 all 24 Python examples ran successfully against
+   pycancensus 0.3.0. The test that failed in 2025 (``vectors=[]``) and the
+   skipped region-list tests now work.
+
+   Since 0.2.0, cross-validation against R happens in the test suite
+   (``tests/cross_validation/``) and in live side-by-side checks for each
+   release: 0.3.0 was compared with R cancensus 0.6.2 for
+   ``labels="labelled"``, French labels and named vectors, with matching
+   column names, order, labels and types. See the
+   `CHANGELOG <https://github.com/dshkol/pycancensus/blob/main/CHANGELOG.md>`_.
+
 Validation Summary
 ------------------
 
@@ -240,14 +255,13 @@ Each section below shows the **R code**, **Python equivalent**, and **validation
 .. code-block:: python
 
    # Python
-   result = pc.find_census_vectors('CA16', 'Oji-cree', search_type='exact')
+   result = pc.find_census_vectors('Oji-cree', 'CA16', query_type='exact')
 
 **Result:** ✅ **PASS**
 
 .. code-block:: text
 
    Found: 12 vectors
-   Note: Python has different parameter order (dataset first, then query)
 
 **Example 2: Keyword search**
 
@@ -259,7 +273,7 @@ Each section below shows the **R code**, **Python equivalent**, and **validation
 .. code-block:: python
 
    # Python
-   result = pc.find_census_vectors('CA11', 'commuting duration', search_type='keyword')
+   result = pc.find_census_vectors('commuting duration', 'CA11', query_type='keyword')
 
 **Result:** ✅ **PASS**
 
@@ -277,7 +291,7 @@ Each section below shows the **R code**, **Python equivalent**, and **validation
 .. code-block:: python
 
    # Python
-   result = pc.find_census_vectors('CA16', 'after tax income', search_type='keyword')
+   result = pc.find_census_vectors('after tax income', 'CA16', query_type='keyword')
 
 **Result:** ✅ **PASS**
 
@@ -549,7 +563,7 @@ Each section below shows the **R code**, **Python equivalent**, and **validation
    GeoDataFrame: 39 rows × 14 columns
    Column names use short labels instead of full descriptions
 
-**Example 9: Basic CSD with no vectors** ❌
+**Example 9: Basic CSD with no vectors** ✅ (failed in 2025, now resolved)
 
 .. code-block:: r
 
@@ -564,26 +578,21 @@ Each section below shows the **R code**, **Python equivalent**, and **validation
 
 .. code-block:: python
 
-   # Python (FAILS)
+   # Python
    census_data = pc.get_census(
        dataset='CA21',
        regions={'CSD': '5915022'},
-       vectors=[],  # ❌ Causes API error
+       vectors=[],
        level='CSD',
        quiet=True
    )
 
-**Result:** ❌ **FAIL**
+**Result:** ✅ **PASS** (re-checked November 2026)
 
 .. code-block:: text
 
-   Error: API request failed: 422 Client Error: Unprocessable Entity
-
-   Root Cause: API rejects empty vector list
-   Severity: Low (edge case, not typical usage)
-
-   WORKAROUND:
-   Use vectors=None instead of vectors=[]
+   In October 2025 this returned "422 Client Error: Unprocessable Entity".
+   It now returns the region's data without census variables.
 
    census_data = pc.get_census(
        dataset='CA21',
@@ -764,31 +773,31 @@ Parameter Order Differences
    * - R Function
      - Python Function
    * - ``find_census_vectors(query, dataset, ...)``
-     - ``find_census_vectors(dataset, query, ...)``
+     - ``find_census_vectors(query, dataset, ...)`` (same since 0.2.0)
    * - ``search_census_vectors(query, dataset)``
      - ``search_census_vectors(query, dataset)`` (same)
 
 Known Issues
 ------------
 
-Failed Tests (1)
-~~~~~~~~~~~~~~~~
+Failed Tests (1, resolved)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Test:** ``get_census()`` - Basic CSD with no vectors
 
-- **Error:** ``422 Client Error: Unprocessable Entity``
-- **Root Cause:** API rejects requests with empty vector list ``vectors=[]``
-- **Severity:** Low (edge case, not typical usage)
-- **Workaround:** Use ``vectors=None`` instead of ``vectors=[]``
+- **Error in 2025:** ``422 Client Error: Unprocessable Entity`` for
+  ``vectors=[]``
+- **Status:** Resolved. ``vectors=[]`` returns the regions without census
+  variables, like ``vectors=None``.
 
-Skipped Tests (1)
-~~~~~~~~~~~~~~~~~
+Skipped Tests (1, resolved)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Functions:** ``list_census_regions()`` and ``search_census_regions()``
 
-- **Reason:** API endpoint returns 404 (not a pycancensus issue)
-- **Status:** Known API limitation
-- **Documentation:** See GAP_ANALYSIS.md for details
+- **Reason in 2025:** the API endpoint returned 404
+- **Status:** Resolved. Both use the ``place_names.csv`` endpoint that R
+  cancensus uses.
 
 Conclusions
 -----------
@@ -832,7 +841,8 @@ You can reproduce these validation results:
    # Run validator
    python3 comprehensive_example_validator.py
 
-Expected output:
+Expected output from the October 2025 run (with ``rpy2`` installed for the R
+comparison):
 
 .. code-block:: text
 

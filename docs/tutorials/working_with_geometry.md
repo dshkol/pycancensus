@@ -70,7 +70,7 @@ try:
     vancouver_data = pc.get_census(
         dataset="CA21",
         regions={"CMA": "59933"},  # Vancouver CMA
-        vectors=["v_CA21_1", "v_CA21_434"],  # Population and median income
+        vectors=["v_CA21_1", "v_CA21_906"],  # Population and median household income
         level="CSD",  # Municipality level
         geo_format="geopandas",
         labels="short"
@@ -80,7 +80,7 @@ try:
     print(f"CRS: {vancouver_data.crs}")
 
     # Show sample data
-    display(vancouver_data[['name', 'v_CA21_1', 'v_CA21_434']].head())
+    display(vancouver_data[['name', 'v_CA21_1', 'v_CA21_906']].head())
     
 except Exception as e:
     print(f"Error retrieving data: {e}")
@@ -134,7 +134,7 @@ ax1.axis('off')
 
 # Income map
 vancouver_data.plot(
-    column='v_CA21_434',
+    column='v_CA21_906',
     cmap='YlGnBu',
     legend=True,
     ax=ax2,
@@ -270,7 +270,7 @@ Save your data for use in other applications:
 # Export to various formats
 try:
     # Prepare clean data for export (use original geographic CRS)
-    export_data = vancouver_data[['geometry', 'name', 'v_CA21_1', 'v_CA21_434']].copy()
+    export_data = vancouver_data[['geometry', 'name', 'v_CA21_1', 'v_CA21_906']].copy()
 
     # GeoJSON (web-friendly, supports long column names)
     export_data.to_file("vancouver_census.geojson", driver="GeoJSON")
@@ -280,7 +280,7 @@ try:
     # Rename columns to be shapefile-friendly (10 char max)
     shp_data = export_data.rename(columns={
         'v_CA21_1': 'pop2021',
-        'v_CA21_434': 'income'
+        'v_CA21_906': 'income'
     })
     shp_data.to_file("vancouver_census.shp")
     print("✓ Exported to Shapefile")
@@ -314,12 +314,13 @@ try:
         tiles='OpenStreetMap'
     )
     
-    # Add choropleth layer
+    # Add choropleth layer. With labels="short", geometry results keep
+    # CensusMapper's "id" column for the region ID ("GeoUID" with "labelled")
     folium.Choropleth(
         geo_data=vancouver_data,
         data=vancouver_data,
-        columns=['GeoUID', 'v_CA21_1'],
-        key_on='feature.properties.GeoUID',
+        columns=['id', 'v_CA21_1'],
+        key_on='feature.properties.id',
         fill_color='YlOrRd',
         fill_opacity=0.7,
         line_opacity=0.2,
@@ -378,7 +379,7 @@ print(f"Missing population data: {null_pop}")
 print(f"\nData summary:")
 print(f"Total regions: {len(vancouver_data)}")
 print(f"Total population: {vancouver_data['v_CA21_1'].sum():,}")
-print(f"Average income: ${vancouver_data['v_CA21_434'].mean():,.0f}")
+print(f"Average income: ${vancouver_data['v_CA21_906'].mean():,.0f}")
 ```
 
 ## Summary
