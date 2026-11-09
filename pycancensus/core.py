@@ -39,7 +39,7 @@ _CACHE_SCHEMA_VERSION = 3
 def get_census(
     dataset: str,
     regions: Dict[str, Union[str, List[str]]],
-    vectors: Optional[List[str]] = None,
+    vectors: Optional[Union[List[str], Dict[str, str]]] = None,
     level: str = "Regions",
     geo_format: Optional[str] = None,
     resolution: str = "simplified",
@@ -62,9 +62,19 @@ def get_census(
     regions : dict
         A dictionary of census regions to retrieve. Keys must be valid census
         aggregation levels.
-    vectors : list of str, optional
+    vectors : list of str or dict, optional
         CensusMapper variable names of the census variables to download.
-        If None, only geographic data will be downloaded.
+        If None, only geographic data will be downloaded. A dict names the
+        columns, mapping column name to vector, e.g.
+        ``{"pop": "v_CA21_1", "v_CA21_2": "v_CA21_2"}`` (R's
+        ``c(pop = "v_CA21_1")``). Vectors given under their own code (or an
+        empty name) keep their vector code as column name, and so do all
+        other vector columns once any vector is named. With
+        ``labels='labelled'`` a named column keeps its variable's label, and
+        if the name is already used by another column, like ``Population``,
+        that column gets a trailing underscore (``Population_``); with other
+        labels such a name is an error. :func:`label_vectors` still reports
+        vector codes.
     level : str, default 'Regions'
         The census aggregation level to retrieve. One of 'Regions', 'PR',
         'CMA', 'CA', 'CMACA', 'CD', 'CSD', 'CT', 'DA', 'EA' (for 1996), or
@@ -170,6 +180,7 @@ def get_census(
             if not quiet:
                 _notice_labels_default()
     labels = validate_labels(labels)
+    vectors, vector_names = _split_named_vectors(vectors)
     dataset = validate_dataset(dataset)
     level = validate_level(level)
 
@@ -225,9 +236,104 @@ def get_census(
             cache_key,
         )
 
-    return _apply_labels(
+    result = _apply_labels(
         result, dataset, level, vectors, labels, language, quiet, api_key
     )
+    if vector_names:
+        result = _apply_vector_names(result, vector_names, labels)
+    return result
+
+
+def _split_named_vectors(vectors):
+    """
+    Split ``vectors`` into the list of vector codes to request and a
+    ``{vector code: column name}`` dict for the vectors given a name.
+    """
+    if vectors is None:
+        return None, {}
+    if isinstance(vectors, str):
+        vectors = [vectors]
+    if not isinstance(vectors, dict):
+        vectors = list(vectors)
+        if not all(isinstance(v, str) for v in vectors):
+            raise ValueError("vectors must be strings, like 'v_CA21_1'")
+        return vectors, {}
+
+    codes, names = [], {}
+    for name, code in vectors.items():
+        if not isinstance(code, str) or not isinstance(name, str):
+            raise ValueError(
+                "vectors given as a dict must map column names to vector "
+                "codes, e.g. {'pop': 'v_CA21_1'}"
+            )
+        if code in codes:
+            raise ValueError(f"Vector {code!r} is named more than once in vectors")
+        codes.append(code)
+        if name and name != code:
+            names[code] = name
+    return codes, names
+
+
+def _apply_vector_names(result, vector_names, labels):
+    """
+    Rename vector columns to the names chosen in ``vectors``, mirroring R
+    cancensus: vector columns are named by code first, then renamed.
+    """
+    # With labels='detailed' the vector columns are "v_...: label"
+    to_codes = {
+        c: c.split(":", 1)[0]
+        for c in result.columns
+        if isinstance(c, str) and c.startswith("v_") and ":" in c
+    }
+    if to_codes:
+        result = result.rename(columns=to_codes)
+
+    to_rename = {
+        code: name for code, name in vector_names.items() if code in result.columns
+    }
+    chosen = list(to_rename.values())
+    column_labels = dict(result.attrs.get("column_labels", {}))
+
+    clashes = [
+        name for name in chosen if name in result.columns and name not in to_rename
+    ]
+    if clashes and labels == "labelled":
+        # Names chosen for vectors win; the clashing column gets a trailing
+        # underscore, unless that name is taken too (R add_underscore_to_clashes)
+        vector_clashes = [c for c in clashes if c.startswith("v_")]
+        other_clashes = [c for c in clashes if not c.startswith("v_")]
+        taken = [
+            f"{c}_"
+            for c in other_clashes
+            if f"{c}_" in result.columns or f"{c}_" in chosen
+        ]
+        if taken or vector_clashes:
+            raise ValueError(
+                "Names chosen for vectors clash with the columns "
+                + ", ".join(f"'{c}'" for c in (taken or vector_clashes))
+                + ". Choose different names."
+            )
+        result = result.rename(columns={c: f"{c}_" for c in other_clashes})
+        for c in other_clashes:
+            if c in column_labels:
+                column_labels[f"{c}_"] = column_labels.pop(c)
+    elif clashes:
+        raise ValueError(
+            "Names chosen for vectors clash with existing columns "
+            + ", ".join(f"'{c}'" for c in clashes)
+            + ". Choose different names, or use labels='labelled', which "
+            "renames the other column instead."
+        )
+
+    attrs = dict(result.attrs)
+    result = result.rename(columns=to_rename)
+    result.attrs.update(attrs)
+    for code, name in to_rename.items():
+        if code in column_labels:
+            column_labels[name] = column_labels.pop(code)
+    if column_labels:
+        result.attrs["column_labels"] = column_labels
+    return result
 
 
 def _notice_labels_default() -> None:
@@ -292,9 +398,13 @@ def _download_census(
     if vectors:
         request_data["vectors"] = json.dumps(vectors)
 
-    # Create progress indicator for large requests
-    progress = create_progress_for_request(
-        processed_regions, vectors or [], level, geo_format
+    # Create progress indicator for large requests (none when quiet)
+    progress = (
+        None
+        if quiet
+        else create_progress_for_request(
+            processed_regions, vectors or [], level, geo_format
+        )
     )
 
     try:
