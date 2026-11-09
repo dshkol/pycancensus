@@ -5,7 +5,15 @@ from typing import Dict, List, Optional, Union
 
 import pandas as pd
 
+from .settings import get_language, validate_language
 from .utils import validate_dataset
+
+
+def _with_attrs(df: pd.DataFrame, dataset: str, language: str) -> pd.DataFrame:
+    """Record the dataset and language of a vector list, like R."""
+    df.attrs["dataset"] = dataset
+    df.attrs["language"] = language
+    return df
 
 
 def _clean_vector_input(vectors: Union[str, List[str], pd.DataFrame]) -> List[str]:
@@ -30,13 +38,30 @@ def _dataset_from_vectors(vector_ids: List[str]) -> str:
     return datasets.pop()
 
 
-def _get_all_vectors(dataset, use_cache, api_key) -> Optional[pd.DataFrame]:
+def _vector_list_language(vectors, language: Optional[str] = None) -> str:
+    """
+    Language of a list of vectors: the explicitly requested language if
+    there is one, otherwise the language a vector list was retrieved in,
+    otherwise the session default (R cancensus vector_list_language()).
+    """
+    if language is None and isinstance(vectors, pd.DataFrame):
+        language = vectors.attrs.get("language")
+    if language is None:
+        return get_language()
+    return validate_language(language)
+
+
+def _get_all_vectors(dataset, use_cache, api_key, language) -> Optional[pd.DataFrame]:
     """Fetch the full vector list for a dataset, warning on failure."""
     from .vectors import list_census_vectors
 
     try:
         all_vectors = list_census_vectors(
-            dataset, use_cache=use_cache, quiet=True, api_key=api_key
+            dataset,
+            use_cache=use_cache,
+            quiet=True,
+            api_key=api_key,
+            language=language,
         )
     except ValueError:
         # Configuration problems (e.g. missing API key) should surface
@@ -55,6 +80,7 @@ def parent_census_vectors(
     dataset: Optional[str] = None,
     use_cache: bool = True,
     api_key: Optional[str] = None,
+    language: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Get all parent vectors up the hierarchy for given vectors.
@@ -74,6 +100,11 @@ def parent_census_vectors(
         Whether to use cached data if available
     api_key : str, optional
         API key for CensusMapper API
+    language : str, optional
+        Language of the labels, ``"en"`` or ``"fr"``. By default the language
+        ``vectors`` was retrieved in if it is a DataFrame from
+        :func:`list_census_vectors`, otherwise :func:`get_language`. See
+        :func:`list_census_vectors`.
 
     Returns
     -------
@@ -81,6 +112,7 @@ def parent_census_vectors(
         DataFrame with ancestor vector information, in discovery order
         (direct parents first, then grandparents, and so on)
     """
+    language = _vector_list_language(vectors, language)
     vector_ids = _clean_vector_input(vectors)
     if not vector_ids:
         return pd.DataFrame()
@@ -89,7 +121,7 @@ def parent_census_vectors(
         dataset = _dataset_from_vectors(vector_ids)
     dataset = validate_dataset(dataset)
 
-    all_vectors = _get_all_vectors(dataset, use_cache, api_key)
+    all_vectors = _get_all_vectors(dataset, use_cache, api_key, language)
     if all_vectors is None:
         return pd.DataFrame()
 
@@ -112,9 +144,10 @@ def parent_census_vectors(
         frontier = new_vecs
 
     if not seen:
-        return pd.DataFrame(columns=all_vectors.columns)
+        return _with_attrs(pd.DataFrame(columns=all_vectors.columns), dataset, language)
 
-    return all_vectors.set_index("vector").loc[seen].reset_index()[all_vectors.columns]
+    result = all_vectors.set_index("vector").loc[seen].reset_index()
+    return _with_attrs(result[all_vectors.columns], dataset, language)
 
 
 def child_census_vectors(
@@ -125,6 +158,7 @@ def child_census_vectors(
     leaves_only: bool = False,
     max_level: Optional[int] = None,
     keep_parent: bool = False,
+    language: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Get all child vectors down the hierarchy for given vectors.
@@ -152,6 +186,11 @@ def child_census_vectors(
         max_level=1 returns only direct children
     keep_parent : bool, default False
         Also include the input vectors in the result
+    language : str, optional
+        Language of the labels, ``"en"`` or ``"fr"``. By default the language
+        ``vectors`` was retrieved in if it is a DataFrame from
+        :func:`list_census_vectors`, otherwise :func:`get_language`. See
+        :func:`list_census_vectors`.
 
     Returns
     -------
@@ -159,6 +198,7 @@ def child_census_vectors(
         DataFrame with descendant vector information, in discovery order
         (direct children first, then grandchildren, and so on)
     """
+    language = _vector_list_language(vectors, language)
     vector_ids = _clean_vector_input(vectors)
     if not vector_ids:
         return pd.DataFrame()
@@ -167,7 +207,7 @@ def child_census_vectors(
         dataset = _dataset_from_vectors(vector_ids)
     dataset = validate_dataset(dataset)
 
-    all_vectors = _get_all_vectors(dataset, use_cache, api_key)
+    all_vectors = _get_all_vectors(dataset, use_cache, api_key, language)
     if all_vectors is None:
         return pd.DataFrame()
 
@@ -202,6 +242,7 @@ def child_census_vectors(
         seen = [v for v in vector_ids if v in valid_inputs] + seen
 
     if not seen:
-        return pd.DataFrame(columns=all_vectors.columns)
+        return _with_attrs(pd.DataFrame(columns=all_vectors.columns), dataset, language)
 
-    return all_vectors.set_index("vector").loc[seen].reset_index()[all_vectors.columns]
+    result = all_vectors.set_index("vector").loc[seen].reset_index()
+    return _with_attrs(result[all_vectors.columns], dataset, language)

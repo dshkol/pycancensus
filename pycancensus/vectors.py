@@ -11,7 +11,13 @@ from typing import Optional
 import pandas as pd
 import requests
 
-from .settings import get_api_key, CENSUSMAPPER_API_URL
+from .settings import (
+    get_api_key,
+    get_language,
+    validate_language,
+    first_time_this_session,
+    CENSUSMAPPER_API_URL,
+)
 from .resilience import CensusAPIError, NetworkError, get_session
 from .utils import validate_dataset
 from .cache import (
@@ -29,8 +35,10 @@ def label_vectors(x):
     Return Census variable names and labels from a data frame.
 
     This function extracts the census_vectors attribute from a DataFrame
-    returned by get_census() when labels='short'. The attribute contains
-    a mapping of truncated vector names to their detailed descriptions.
+    returned by get_census() with vectors. The attribute contains a mapping
+    of vector codes to their detailed descriptions, in the language
+    requested from get_census(). It is most useful with labels='short' or
+    labels='labelled', where columns are named by vector code only.
 
     Parameters
     ----------
@@ -81,6 +89,7 @@ def list_census_vectors(
     use_cache: bool = True,
     quiet: bool = False,
     api_key: Optional[str] = None,
+    language: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Query the CensusMapper API for available vectors for a given dataset.
@@ -95,6 +104,14 @@ def list_census_vectors(
         When True, suppress messages and warnings.
     api_key : str, optional
         API key for CensusMapper API. If None, uses environment variable.
+    language : str, optional
+        Language of the ``label`` and ``details`` columns, ``"en"`` or
+        ``"fr"``. Defaults to :func:`get_language`, which is ``"en"`` unless
+        set with :func:`set_language`. Not all datasets have French labels:
+        vectors without them fall back to English, with a warning once per
+        session and dataset that is shown regardless of ``quiet``. The
+        ``type``, ``units`` and ``aggregation`` columns are always in English,
+        and the columns are the same in both languages.
 
     Returns
     -------
@@ -115,8 +132,87 @@ def list_census_vectors(
     >>> import pycancensus as pc
     >>> vectors = pc.list_census_vectors("CA16")
     >>> print(vectors.head())
+    >>> # The same list with French labels
+    >>> vectors_fr = pc.list_census_vectors("CA16", language="fr")
     """
+    language = _resolve_language(language)
     dataset = validate_dataset(dataset)
+    vector_info = _fetch_census_vectors(dataset, use_cache, quiet, api_key)
+    return _localize_census_vectors(vector_info, dataset, language)
+
+
+def _resolve_language(language: Optional[str]) -> str:
+    """Validate a language parameter, falling back to the session default."""
+    return get_language() if language is None else validate_language(language)
+
+
+def _localize_census_vectors(
+    vector_info: pd.DataFrame, dataset: str, language: str, warn: bool = True
+) -> pd.DataFrame:
+    """
+    Turn vector metadata in all languages into the requested language.
+
+    The API returns French labels in ``label_fr`` and ``details_fr``. These
+    replace ``label`` and ``details`` for French, and are dropped either way
+    so the columns don't depend on the language. Vectors without a French
+    translation keep their English labels.
+    """
+    vector_info = vector_info.copy()
+    if language == "fr":
+        n_missing = len(vector_info)
+        if len(vector_info) > 0:
+            has_label = _not_blank(vector_info, "label_fr")
+            has_details = _not_blank(vector_info, "details_fr")
+            vector_info.loc[has_label, "label"] = vector_info.loc[has_label, "label_fr"]
+            if "details" in vector_info.columns:
+                vector_info.loc[has_details, "details"] = vector_info.loc[
+                    has_details, "details_fr"
+                ]
+            n_missing = int((~(has_label & has_details)).sum())
+        if warn and n_missing > 0:
+            _warn_language_fallback(dataset, n_missing, len(vector_info))
+    vector_info = vector_info.drop(
+        columns=[c for c in ("label_fr", "details_fr") if c in vector_info.columns]
+    )
+    vector_info.attrs["dataset"] = dataset
+    vector_info.attrs["language"] = language
+    return vector_info
+
+
+def _not_blank(df: pd.DataFrame, column: str) -> pd.Series:
+    """Whether each value of ``column`` is a non-empty string."""
+    if column not in df.columns:
+        return pd.Series(False, index=df.index)
+    values = df[column]
+    return values.notna() & (values.astype(str).str.strip() != "")
+
+
+def _warn_language_fallback(dataset: str, n_missing: int, n_total: int) -> None:
+    """Warn once per session and dataset that French labels are missing."""
+    if not first_time_this_session(f"language_fallback_{dataset}"):
+        return
+    if n_missing == n_total:
+        message = f"French labels are not available for dataset {dataset}."
+    else:
+        message = (
+            f"French labels are not available for {n_missing} of {n_total} "
+            f"vectors in dataset {dataset}."
+        )
+    warnings.warn(f"{message} Using English labels instead.", stacklevel=3)
+
+
+def _fetch_census_vectors(
+    dataset: str,
+    use_cache: bool = True,
+    quiet: bool = False,
+    api_key: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Get the vector metadata of a dataset in all languages.
+
+    Caching is independent of language, :func:`_localize_census_vectors`
+    makes the view in one language.
+    """
 
     if api_key is None:
         api_key = get_api_key()
@@ -282,6 +378,7 @@ def find_census_vectors(
     use_cache: bool = True,
     quiet: bool = False,
     api_key: Optional[str] = None,
+    language: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Find census vectors using exact, semantic, or keyword search.
@@ -311,6 +408,11 @@ def find_census_vectors(
         When True, suppress messages and warnings.
     api_key : str, optional
         API key for CensusMapper API.
+    language : str, optional
+        Language to search in and return labels in, ``"en"`` or ``"fr"``.
+        Defaults to :func:`get_language`. Searches match accents exactly, and
+        ``type`` takes the same English values in both languages. See
+        :func:`list_census_vectors`.
 
     Returns
     -------
@@ -323,7 +425,10 @@ def find_census_vectors(
     >>> pc.find_census_vectors('Oji-cree', dataset='CA16', type='total')
     >>> pc.find_census_vectors('after tax income', 'CA16', query_type='semantic')
     >>> pc.find_census_vectors('commute duration', 'CA16', query_type='keyword')
+    >>> pc.find_census_vectors('revenu total', 'CA16', type='total',
+    ...                        query_type='keyword', language='fr')
     """
+    language = _resolve_language(language)
     type = type.lower()
     query_type = query_type.lower()
 
@@ -339,11 +444,13 @@ def find_census_vectors(
         )
 
     vector_list = list_census_vectors(
-        dataset, use_cache=use_cache, quiet=True, api_key=api_key
+        dataset, use_cache=use_cache, quiet=True, api_key=api_key, language=language
     )[["vector", "type", "label", "details"]].copy()
-    # Strip the common "... Census; 100% data;" prefix from details, like R
+    # Strip the common "... Census; 100% data;" prefix from details, like R.
+    # The French pattern also runs on English text, since vectors without a
+    # translation fall back to English
     vector_list["details"] = vector_list["details"].str.replace(
-        r"^(.*)Census; |100% data; ", "", regex=True
+        _DETAILS_PREFIX, "", regex=True
     )
 
     if type in ("total", "male", "female"):
@@ -365,6 +472,13 @@ def find_census_vectors(
         return _semantic_search(query, vector_list, quiet=quiet)
     else:  # keyword
         return _keyword_search(query, vector_list, interactive=interactive)
+
+
+# Same pattern as R cancensus 0.6.2 find_census_vectors()
+_DETAILS_PREFIX = (
+    r"^(.*)Census; |100% data; |^(Recensement|ENM)[^;]*; "
+    r"|Données intégrales \(100.?%\); "
+)
 
 
 def _bounded_levenshtein(a: str, b: str, max_dist: int = 2) -> int:

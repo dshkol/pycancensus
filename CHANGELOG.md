@@ -6,6 +6,40 @@ All notable changes to pycancensus will be documented in this file.
 
 ### Improvements
 
+- French labels (port of R cancensus 0.6.2, #229): `get_census()`,
+  `list_census_vectors()`, `parent_census_vectors()`, `child_census_vectors()`,
+  `find_census_vectors()`, `visualize_vector_hierarchy()` and
+  `dataset_attribution()` gain a `language` parameter, `"en"` or `"fr"`. It
+  defaults to the new `set_language()` session setting, the analog of R's
+  `cancensus.language` option, then to the `PYCANCENSUS_LANGUAGE` environment
+  variable, then to `"en"`. Columns are the same in both languages, and in
+  `get_census()` changing the language does not download the data again.
+  Vectors without French labels, currently the tax and cross-tabulation
+  datasets, fall back to English with a warning once per session and dataset.
+  Region names and the `type`, `units` and `aggregation` columns of
+  `list_census_vectors()` stay as they are. `list_census_vectors()` no longer
+  returns the raw `label_fr` and `details_fr` columns, their content is now in
+  `label` and `details` with `language="fr"`.
+- `get_census()` gains `labels="labelled"` (port of R cancensus 0.6.2, #230),
+  which names vector columns by vector like `labels="short"` and stores the
+  label of each column in `result.attrs["column_labels"]`, a dict keyed by
+  column name (pandas has no per-column label attribute like R). The other
+  columns get short names, types and an order that are the same across
+  datasets and with or without `geo_format`, following R: `GeoUID`, `Type`,
+  `Name`, `Area`, `Population`, `Dwellings`, `Households`,
+  `Population_Previous`, `Quality`, the `*_UID` columns and so on. These also
+  get labels in the requested language, with the census year where it
+  applies, e.g. `Population 2021`. `labels="detailed"` and `labels="short"`
+  do not change.
+- The default of `labels` in `get_census()` is planned to change to
+  `"labelled"` in a future version. It now defaults to the new `set_labels()`
+  session setting (the analog of R's `cancensus.labels` option) or the
+  `PYCANCENSUS_LABELS` environment variable, and otherwise still to
+  `"detailed"`. `get_census()` prints a notice once per session if neither
+  `labels` nor a default is set; `quiet=True` suppresses it.
+- `get_census()` caches downloads independently of `labels` and `language`,
+  which get applied after reading the cache, so switching either reuses the
+  cached data. Data cached by earlier versions is downloaded again once.
 - All requests to the CensusMapper API now identify the client through the
   user agent, in the form `pycancensus/<version> requests/<version>
   Python/<version>` (port of R cancensus 0.6.2). This lets the API tell
@@ -21,7 +55,7 @@ All notable changes to pycancensus will be documented in this file.
 - Sphinx-Gallery thumbnails now resolve to their example pages, generated
   notebooks no longer shadow the canonical gallery documents, and the
   geographic plotting example imports NumPy before fitting its trend line.
-- `get_census()` cache keys now include geometry resolution and label mode,
+- `get_census()` cache keys now include geometry resolution,
   use canonical request serialization, and carry a schema version so
   incompatible legacy entries are not reused.
 - Public API functions preserve `CensusAPIError` subclasses such as

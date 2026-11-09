@@ -87,6 +87,142 @@ def get_user_agent() -> str:
     return ua
 
 
+VALID_LANGUAGES = ("en", "fr")
+VALID_LABELS = ("detailed", "short", "labelled")
+
+# Session defaults for the language and labels parameters (see set_language
+# and set_labels), the analogs of R's cancensus.language and cancensus.labels
+# options. None means not set.
+_LANGUAGE = None
+_LABELS = None
+LANGUAGE_ENV_VAR = "PYCANCENSUS_LANGUAGE"
+LABELS_ENV_VAR = "PYCANCENSUS_LABELS"
+
+# Keys of notices and warnings already shown in this session
+_SHOWN_ONCE = set()
+
+
+def first_time_this_session(key: str) -> bool:
+    """True the first time it is called with ``key`` in a session."""
+    if key in _SHOWN_ONCE:
+        return False
+    _SHOWN_ONCE.add(key)
+    return True
+
+
+def validate_language(language) -> str:
+    """Return ``language`` lowercased, or raise if it isn't "en" or "fr"."""
+    lowered = language.lower() if isinstance(language, str) else None
+    if lowered not in VALID_LANGUAGES:
+        raise ValueError(
+            f"Language must be one of {', '.join(VALID_LANGUAGES)}, got {language!r}."
+        )
+    return lowered
+
+
+def validate_labels(labels) -> str:
+    """Return ``labels``, or raise if it isn't a valid labels option."""
+    if not isinstance(labels, str) or labels not in VALID_LABELS:
+        raise ValueError(
+            f"Invalid labels: {labels!r}. Must be one of "
+            f"{', '.join(repr(v) for v in VALID_LABELS)}."
+        )
+    return labels
+
+
+def set_language(language: Optional[str]) -> None:
+    """
+    Set the default language of census variable labels for this session.
+
+    Used by :func:`get_census`, :func:`list_census_vectors`,
+    :func:`find_census_vectors`, :func:`parent_census_vectors`,
+    :func:`child_census_vectors`, :func:`visualize_vector_hierarchy` and
+    :func:`dataset_attribution` when their ``language`` parameter is not
+    given. Equivalent to ``options(cancensus.language = ...)`` in R
+    cancensus. The ``PYCANCENSUS_LANGUAGE`` environment variable sets a
+    default without code changes; a language set here takes precedence.
+
+    Parameters
+    ----------
+    language : str or None
+        ``"en"`` or ``"fr"``. ``None`` removes a default set by this function.
+
+    Examples
+    --------
+    >>> import pycancensus as pc
+    >>> pc.set_language("fr")
+    """
+    global _LANGUAGE
+    _LANGUAGE = None if language is None else validate_language(language)
+
+
+def get_language() -> str:
+    """
+    Return the default language of census variable labels.
+
+    This is the language set by :func:`set_language`, otherwise the
+    ``PYCANCENSUS_LANGUAGE`` environment variable, otherwise ``"en"``.
+
+    Returns
+    -------
+    str
+        ``"en"`` or ``"fr"``.
+    """
+    if _LANGUAGE is not None:
+        return _LANGUAGE
+    env_language = os.environ.get(LANGUAGE_ENV_VAR)
+    if env_language:
+        return validate_language(env_language)
+    return "en"
+
+
+def set_labels(labels: Optional[str]) -> None:
+    """
+    Set the default ``labels`` option of :func:`get_census` for this session.
+
+    Equivalent to ``options(cancensus.labels = ...)`` in R cancensus. The
+    default of ``labels`` is planned to change from ``"detailed"`` to
+    ``"labelled"`` in a future version; setting a default here, or passing
+    ``labels`` explicitly, keeps code working when it does. The
+    ``PYCANCENSUS_LABELS`` environment variable sets a default without code
+    changes; a default set here takes precedence.
+
+    Parameters
+    ----------
+    labels : str or None
+        One of ``"detailed"``, ``"short"`` or ``"labelled"``. ``None``
+        removes a default set by this function.
+
+    Examples
+    --------
+    >>> import pycancensus as pc
+    >>> pc.set_labels("detailed")
+    """
+    global _LABELS
+    _LABELS = None if labels is None else validate_labels(labels)
+
+
+def get_labels() -> Optional[str]:
+    """
+    Return the default ``labels`` option of :func:`get_census`, if one is set.
+
+    This is the value set by :func:`set_labels`, otherwise the
+    ``PYCANCENSUS_LABELS`` environment variable.
+
+    Returns
+    -------
+    str or None
+        The default, or ``None`` if none is set, in which case
+        :func:`get_census` uses ``"detailed"``.
+    """
+    if _LABELS is not None:
+        return _LABELS
+    env_labels = os.environ.get(LABELS_ENV_VAR)
+    if env_labels:
+        return validate_labels(env_labels)
+    return None
+
+
 # Config file location
 def _get_config_path() -> Path:
     """Get the path to the config file."""

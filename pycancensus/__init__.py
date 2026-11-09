@@ -36,6 +36,10 @@ from .settings import (
     show_api_key,
     set_user_agent_prefix,
     get_user_agent,
+    set_language,
+    get_language,
+    set_labels,
+    get_labels,
 )
 from .geometry import get_census_geometry
 from .cache import list_cache, remove_from_cache, clear_cache
@@ -63,6 +67,10 @@ __all__ = [
     "show_api_key",
     "set_user_agent_prefix",
     "get_user_agent",
+    "set_language",
+    "get_language",
+    "set_labels",
+    "get_labels",
     "set_cache_path",
     "get_cache_path",
     "get_census_geometry",

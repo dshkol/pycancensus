@@ -65,6 +65,10 @@ Configuration Management
    get_cache_path
    set_user_agent_prefix
    get_user_agent
+   set_language
+   get_language
+   set_labels
+   get_labels
 
 Cache Management
 ----------------

@@ -7,6 +7,7 @@ import pandas as pd
 from .hierarchy import (
     _clean_vector_input,
     _dataset_from_vectors,
+    _vector_list_language,
     child_census_vectors,
 )
 from .utils import validate_dataset
@@ -20,6 +21,7 @@ def visualize_vector_hierarchy(
     quiet: bool = False,
     use_cache: bool = True,
     api_key: Optional[str] = None,
+    language: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Visualize a census vector hierarchy as an ASCII tree.
@@ -48,6 +50,11 @@ def visualize_vector_hierarchy(
         Whether to use cached data if available.
     api_key : str, optional
         API key for CensusMapper API.
+    language : str, optional
+        Language of the labels, ``"en"`` or ``"fr"``. By default the language
+        ``vector`` was retrieved in if it is a DataFrame from
+        :func:`list_census_vectors`, otherwise :func:`get_language`. See
+        :func:`list_census_vectors`.
 
     Returns
     -------
@@ -63,6 +70,7 @@ def visualize_vector_hierarchy(
     """
     from .vectors import list_census_vectors
 
+    language = _vector_list_language(vector, language)
     vector_ids = _clean_vector_input(vector)
     if not vector_ids:
         raise ValueError("Empty vector input provided.")
@@ -78,7 +86,7 @@ def visualize_vector_hierarchy(
     dataset = validate_dataset(dataset)
 
     all_vectors = list_census_vectors(
-        dataset, use_cache=use_cache, quiet=True, api_key=api_key
+        dataset, use_cache=use_cache, quiet=True, api_key=api_key, language=language
     )
     root_info = all_vectors[all_vectors["vector"].isin(vector_ids)]
     if root_info.empty:
@@ -102,6 +110,7 @@ def visualize_vector_hierarchy(
         use_cache=use_cache,
         api_key=api_key,
         max_level=max_depth,
+        language=language,
     )
     tree_vectors = pd.concat([root_info, children], ignore_index=True)
 

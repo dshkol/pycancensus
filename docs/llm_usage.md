@@ -116,7 +116,12 @@ results.
 - Region IDs and UID columns are strings — `"59933"`, never `59933`.
 - Vector columns in results are named `"v_CA21_1: Total ..."` by default;
   pass `labels="short"` for bare vector IDs and use `pc.label_vectors(df)`
-  to recover the descriptions.
+  to recover the descriptions, or `labels="labelled"` for bare vector IDs,
+  short consistent names for the other columns (`Name`, `Area`,
+  `Population`, ...) and labels in `df.attrs["column_labels"]`. Pass
+  `labels` explicitly: its default is planned to change to `"labelled"`.
+- `language="fr"` gives French variable labels; it does not translate
+  region names.
 - Comparing census years means different vector IDs per dataset
   (`v_CA21_1` vs `v_CA16_401` are both population).
 - StatCan occasionally recalls data; if a warning about recalled data

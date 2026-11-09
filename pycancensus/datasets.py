@@ -8,7 +8,12 @@ from typing import List, Optional
 import pandas as pd
 import requests
 
-from .settings import get_api_key, CENSUSMAPPER_API_URL
+from .settings import (
+    get_api_key,
+    get_language,
+    validate_language,
+    CENSUSMAPPER_API_URL,
+)
 from .resilience import CensusAPIError, NetworkError, get_session
 from .cache import get_cached_data, cache_data
 
@@ -141,7 +146,7 @@ def get_dataset_attribution(dataset: str) -> str:
     return attribution
 
 
-def dataset_attribution(datasets):
+def dataset_attribution(datasets, language: Optional[str] = None):
     """
     Get combined attribution text for multiple datasets.
 
@@ -152,6 +157,11 @@ def dataset_attribution(datasets):
     ----------
     datasets : list of str
         List of dataset identifiers (e.g., ['CA06', 'CA16']).
+    language : str, optional
+        Language of the attribution, ``"en"`` or ``"fr"``. Defaults to
+        :func:`get_language`, which is ``"en"`` unless set with
+        :func:`set_language`. Datasets without a French attribution keep the
+        English one.
 
     Returns
     -------
@@ -165,7 +175,10 @@ def dataset_attribution(datasets):
     >>> attributions = pc.dataset_attribution(['CA06', 'CA16'])
     >>> for attr in attributions:
     ...     print(attr)
+    >>> pc.dataset_attribution(['CA06', 'CA16'], language='fr')
     """
+    language = get_language() if language is None else validate_language(language)
+
     # Get all datasets info
     datasets_df = list_census_datasets(quiet=True)
 
@@ -178,6 +191,11 @@ def dataset_attribution(datasets):
 
     # Get attribution texts
     attributions = dataset_rows["attribution"].tolist()
+    if language == "fr" and "attribution_fr" in dataset_rows.columns:
+        attributions = [
+            fr if isinstance(fr, str) and fr.strip() else en
+            for en, fr in zip(attributions, dataset_rows["attribution_fr"])
+        ]
 
     # Group similar attributions that differ only by year
     # Create a mapping of pattern to actual attributions
