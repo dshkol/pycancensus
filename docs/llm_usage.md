@@ -101,6 +101,7 @@ If you learned pycancensus ≤0.1.0 or infer from R cancensus, note:
 | `geo_format = "sf"` | `geo_format = "geopandas"` |
 | `set_cancensus_api_key()` | `set_api_key()` |
 | `list_cancensus_cache()` | `list_cache()` |
+| `options(cancensus.user_agent_prefix = ...)` | `set_user_agent_prefix(...)` |
 | returns tibble / sf | returns DataFrame / GeoDataFrame |
 
 Function names otherwise match R (`get_census`, `list_census_vectors`,

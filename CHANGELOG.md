@@ -4,6 +4,18 @@ All notable changes to pycancensus will be documented in this file.
 
 ## [Unreleased]
 
+### Improvements
+
+- All requests to the CensusMapper API now identify the client through the
+  user agent, in the form `pycancensus/<version> requests/<version>
+  Python/<version>` (port of R cancensus 0.6.2). This lets the API tell
+  pycancensus traffic apart from the R package and other clients.
+- New `set_user_agent_prefix()` lets packages and tools built on pycancensus
+  identify themselves, e.g. `pc.set_user_agent_prefix("mypackage/1.2.3")`;
+  the `PYCANCENSUS_USER_AGENT_PREFIX` environment variable does the same
+  without code changes. `get_user_agent()` returns the full string. Equivalent
+  to R's `options(cancensus.user_agent_prefix = ...)`.
+
 ### Bug Fixes
 
 - Sphinx-Gallery thumbnails now resolve to their example pages, generated

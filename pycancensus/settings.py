@@ -3,6 +3,7 @@ User settings and configuration for pycancensus.
 """
 
 import os
+import re
 import json
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -15,6 +16,75 @@ _CACHE_PATH = None
 # API configuration
 CENSUSMAPPER_API_URL = "https://censusmapper.ca/api/v1"
 CENSUSMAPPER_DATA_URL = "https://censusmapper.ca/data_sets"
+
+# Optional prefix identifying a tool built on pycancensus (see set_user_agent_prefix)
+_USER_AGENT_PREFIX = None
+USER_AGENT_PREFIX_ENV_VAR = "PYCANCENSUS_USER_AGENT_PREFIX"
+
+
+def _clean_header_value(value: str) -> str:
+    """Collapse control characters so the value is a valid single-line header."""
+    return " ".join(re.sub(r"[\x00-\x1f\x7f]+", " ", value).split())
+
+
+def set_user_agent_prefix(prefix: Optional[str]) -> None:
+    """
+    Identify a package or tool built on pycancensus to the CensusMapper API.
+
+    The prefix is prepended to the user agent sent with every API request,
+    e.g. ``"mypackage/1.2.3 pycancensus/0.3.0 requests/2.32.3 Python/3.12.4"``.
+    Equivalent to ``options(cancensus.user_agent_prefix = ...)`` in R
+    cancensus. The ``PYCANCENSUS_USER_AGENT_PREFIX`` environment variable
+    sets a prefix without code changes; a prefix set here takes precedence.
+
+    Parameters
+    ----------
+    prefix : str or None
+        Product token(s) such as ``"mypackage/1.2.3"``. ``None`` or an empty
+        string removes a prefix set by this function.
+
+    Examples
+    --------
+    >>> import pycancensus as pc
+    >>> pc.set_user_agent_prefix("mypackage/1.2.3")
+    """
+    global _USER_AGENT_PREFIX
+    if prefix is not None and not isinstance(prefix, str):
+        raise TypeError("prefix must be a string or None")
+    _USER_AGENT_PREFIX = _clean_header_value(prefix) if prefix else None
+
+
+def get_user_agent() -> str:
+    """
+    Return the user agent sent with CensusMapper API requests.
+
+    It identifies the package and its version, in the form
+    ``pycancensus/<version> requests/<version> Python/<version>``, so the API
+    can tell which clients make requests and keep older versions working as
+    it evolves. A prefix from :func:`set_user_agent_prefix` or the
+    ``PYCANCENSUS_USER_AGENT_PREFIX`` environment variable is prepended.
+
+    Returns
+    -------
+    str
+        The user agent string.
+    """
+    import platform
+
+    import requests
+
+    from . import __version__
+
+    ua = (
+        f"pycancensus/{__version__} requests/{requests.__version__} "
+        f"Python/{platform.python_version()}"
+    )
+    prefix = _USER_AGENT_PREFIX
+    if prefix is None:
+        prefix = _clean_header_value(os.environ.get(USER_AGENT_PREFIX_ENV_VAR, ""))
+    if prefix:
+        ua = f"{prefix} {ua}"
+    return ua
 
 
 # Config file location

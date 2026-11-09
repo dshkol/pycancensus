@@ -34,6 +34,8 @@ from .settings import (
     get_cache_path,
     remove_api_key,
     show_api_key,
+    set_user_agent_prefix,
+    get_user_agent,
 )
 from .geometry import get_census_geometry
 from .cache import list_cache, remove_from_cache, clear_cache
@@ -59,6 +61,8 @@ __all__ = [
     "get_api_key",
     "remove_api_key",
     "show_api_key",
+    "set_user_agent_prefix",
+    "get_user_agent",
     "set_cache_path",
     "get_cache_path",
     "get_census_geometry",

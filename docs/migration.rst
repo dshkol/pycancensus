@@ -85,6 +85,9 @@ All Core Functions Available
    * - ``list_cancensus_cache()``
      - ``list_cache()``
      - ✅ 100%
+   * - ``options(cancensus.user_agent_prefix = ...)``
+     - ``set_user_agent_prefix(...)``
+     - ✅ 100%
    * - ``visualize_vector_hierarchy()``
      - ``visualize_vector_hierarchy()``
      - ✅ 100%

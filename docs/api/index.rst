@@ -63,6 +63,8 @@ Configuration Management
    show_api_key
    set_cache_path
    get_cache_path
+   set_user_agent_prefix
+   get_user_agent
 
 Cache Management
 ----------------

@@ -9,6 +9,8 @@ from typing import Any, Callable, Dict, Optional
 
 import requests
 
+from .settings import get_user_agent
+
 logger = logging.getLogger(__name__)
 
 
@@ -281,6 +283,13 @@ class ResilientSession:
         # Set default timeout if not provided
         if "timeout" not in kwargs:
             kwargs["timeout"] = 30
+
+        # Identify the client on every request (resolved per call so a later
+        # set_user_agent_prefix() applies); explicit headers take precedence.
+        kwargs["headers"] = {
+            "User-Agent": get_user_agent(),
+            **(kwargs.get("headers") or {}),
+        }
 
         for attempt in range(self.max_retries + 1):
             # Enforce rate limiting
