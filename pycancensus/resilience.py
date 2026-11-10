@@ -268,7 +268,9 @@ class ResilientSession:
         url : str
             Request URL
         **kwargs
-            Additional arguments passed to requests
+            Additional arguments passed to requests. ``raise_errors=False``
+            returns error responses instead of raising, after retries, for
+            callers that need the status, headers or body of an error.
 
         Returns
         -------
@@ -280,6 +282,8 @@ class ResilientSession:
         CensusAPIError
             For various API error conditions
         """
+        raise_errors = kwargs.pop("raise_errors", True)
+
         # Set default timeout if not provided
         if "timeout" not in kwargs:
             kwargs["timeout"] = 30
@@ -327,6 +331,8 @@ class ResilientSession:
                 continue
 
             # Permanent error, or transient error with retries exhausted
+            if not raise_errors:
+                return response
             raise self._create_appropriate_exception(response)
 
     def get(self, url: str, **kwargs) -> requests.Response:

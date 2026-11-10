@@ -112,6 +112,24 @@ All Core Functions Available
    * - ``explore_census_regions()``
      - ``explore_census_regions()``
      - ✅ 100%
+   * - ``get_statcan_wds_data()``
+     - ``get_statcan_wds_data()``
+     - ✅ 100%
+   * - ``get_statcan_wds_metadata()``
+     - ``get_statcan_wds_metadata()``
+     - ✅ 100%
+   * - ``get_statcan_geo_suite()``
+     - ``get_statcan_geo_suite()``
+     - ✅ 100%
+   * - ``get_statcan_geographic_attributes()``
+     - ``get_statcan_geographic_attributes()``
+     - ✅ 100%
+   * - ``get_statcan_geographies()``
+     - ``get_statcan_geographies()``
+     - ✅ 100%
+   * - ``get_statcan_geography_relationships()``
+     - not ported, deprecated in R; use ``get_statcan_geographic_attributes("2021")``
+     - ➖
    * - ``list_recalled_cached_data()``
      - ``list_recalled_cached_data()``
      - ✅ 100%

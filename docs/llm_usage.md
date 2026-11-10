@@ -98,7 +98,11 @@ If you learned pycancensus ≤0.1.0 or infer from R cancensus, note:
 - New in 0.3.0: `language=` (`"en"`/`"fr"`) and `set_language()`;
   `labels="labelled"` and `set_labels()`; named vectors
   `vectors={"pop": "v_CA21_1"}`; `set_user_agent_prefix()` /
-  `get_user_agent()`; Python >= 3.10.
+  `get_user_agent()`; Python >= 3.10; StatCan functions
+  `get_statcan_wds_data()` / `get_statcan_wds_metadata()` (2021 profile
+  data by DGUID, incl. federal ridings, FSAs, health regions),
+  `get_statcan_geo_suite()`, `get_statcan_geographic_attributes()` (need
+  `pip install pycancensus[statcan]`) and `get_statcan_geographies()`.
 - Invalid `labels` values raise `ValueError`. Pass `labels=` explicitly (or
   call `set_labels()`): the default is planned to change to `"labelled"`.
 

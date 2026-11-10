@@ -32,6 +32,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+statcan = [
+    "pyarrow>=14",
+]
 dev = [
     "pytest>=6.0",
     "pytest-cov",

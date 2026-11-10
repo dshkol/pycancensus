@@ -7,8 +7,9 @@ All notable changes to pycancensus will be documented in this file.
 This release synchronizes pycancensus with R cancensus 0.6.2: the client now
 identifies itself to the CensusMapper API, labels are available in French,
 `get_census()` gains R's `labels = "labelled"` mode and named vectors, and all
-CensusMapper datasets can be requested. StatCan WDS and original-geography
-support is planned for 0.4.0.
+CensusMapper datasets can be requested. It also adds R's functions for data
+straight from Statistics Canada: the Web Data Service, the GeoSuite, the
+geographic attribute files and the original boundary files.
 
 ### Breaking Changes
 
@@ -27,6 +28,33 @@ support is planned for 0.4.0.
 
 ### Improvements
 
+- New functions for data straight from Statistics Canada, ports of R
+  cancensus 0.6.2's StatCan functions:
+  - `get_statcan_wds_data()` and `get_statcan_wds_metadata()` query the
+    Statistics Canada Web Data Service for 2021 Census Profile data, including
+    levels CensusMapper doesn't have: federal and provincial electoral
+    districts, designated places, population centres, forward sortation areas
+    and health regions. Data gets the English or French names of the
+    geographies and characteristics, and is cached for the session.
+  - `get_statcan_geo_suite()` reads the tables of the Statistics Canada
+    GeoSuite for 1996 to 2021, and lists them when called without `level`.
+    `get_statcan_geographic_attributes()` reads the geographic attribute files
+    for 1981 to 2021. Statistics Canada blocks programmatic downloads of these
+    files, so like R they come from parquet files hosted at
+    https://data.mountainmath.ca/census/, cached in the pycancensus cache path.
+    Column labels in English or French are in `attrs["column_labels"]`, and the
+    attribution, licence, source and notes in `attrs["metadata"]`. Reading
+    them needs pyarrow, from the new `statcan` extra:
+    `pip install pycancensus[statcan]`.
+  - `get_statcan_geographies()` downloads the original 2021 boundary files.
+    Statistics Canada currently blocks these downloads with a Cloudflare
+    browser verification; when it does, this warns with the link to download
+    the file in a browser and the folder to put it in, and picks it up from
+    there on the next call.
+
+  R's `get_statcan_geography_relationships()` is not ported, as R 0.6.2
+  deprecates it for removal in its next release;
+  `get_statcan_geographic_attributes("2021")` has the same DGUIDs.
 - `get_census()` accepts named vectors as a dict mapping column names to
   vector codes, e.g. `vectors={"pop": "v_CA21_1"}`, the equivalent of R's
   `vectors = c(pop = "v_CA21_1")`. Once any vector is named, the other vector

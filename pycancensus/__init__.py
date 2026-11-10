@@ -51,6 +51,9 @@ from .recalls import (
 from .hierarchy import parent_census_vectors, child_census_vectors
 from .vector_viz import visualize_vector_hierarchy
 from .intersect_geometry import get_intersecting_geometries
+from .wds import get_statcan_wds_metadata, get_statcan_wds_data
+from .geo_suite import get_statcan_geo_suite, get_statcan_geographic_attributes
+from .geographies import get_statcan_geographies
 
 __all__ = [
     "get_census",
@@ -89,4 +92,9 @@ __all__ = [
     "explore_census_regions",
     "explore_census_vectors",
     "get_intersecting_geometries",
+    "get_statcan_wds_metadata",
+    "get_statcan_wds_data",
+    "get_statcan_geo_suite",
+    "get_statcan_geographic_attributes",
+    "get_statcan_geographies",
 ]
