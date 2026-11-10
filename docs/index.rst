@@ -18,7 +18,9 @@ and is explicitly a Python port of the R `cancensus` package.
 Key Features
 ------------
 
-* Access to Canadian Census data through Statistics Canada's API
+* Access to Canadian Census data through the CensusMapper API
+* French variable labels (``language="fr"``) and ``labels="labelled"`` columns
+* All CensusMapper datasets: 1996-2021 censuses, cross-tabulations and taxfiler data
 * Geographic data integration with Census boundaries  
 * Data caching for improved performance
 * Compatible with pandas and geopandas workflows
@@ -46,7 +48,8 @@ Get started with basic census data:
    data = pycan.get_census(
        dataset="CA21",
        regions={"CMA": "59933"},  # Vancouver CMA
-       vectors=["v_CA21_1"]       # Population
+       vectors=["v_CA21_1"],      # Population
+       labels="short"             # name vector columns by code
    )
 
 Installation

@@ -13,6 +13,7 @@ VALID_CSV = 'GeoUID,Type,"Region Name",Population\n' '5915022,CSD,"Vancouver",66
 def make_response(text):
     response = MagicMock()
     response.text = text
+    response.content = response.text.encode("utf-8")
     return response
 
 
@@ -72,11 +73,11 @@ class TestCacheKeys:
     def test_output_affecting_options_have_distinct_keys(self):
         args = ("CA21", {"PR": ["35"]}, ["v_CA21_1"], "CSD", "geopandas")
 
-        simplified = _generate_cache_key(*args, "simplified", "detailed")
-        high_resolution = _generate_cache_key(*args, "high", "detailed")
-        short_labels = _generate_cache_key(*args, "simplified", "short")
+        simplified = _generate_cache_key(*args, "simplified")
+        high_resolution = _generate_cache_key(*args, "high")
+        no_geometry = _generate_cache_key(*args[:4], None, "simplified")
 
-        assert len({simplified, high_resolution, short_labels}) == 3
+        assert len({simplified, high_resolution, no_geometry}) == 3
 
     def test_region_mapping_order_does_not_change_key(self):
         first = _generate_cache_key(
@@ -86,7 +87,6 @@ class TestCacheKeys:
             "CSD",
             None,
             "simplified",
-            "detailed",
         )
         second = _generate_cache_key(
             "CA21",
@@ -95,19 +95,16 @@ class TestCacheKeys:
             "CSD",
             None,
             "simplified",
-            "detailed",
         )
 
         assert first == second
 
     @patch("pycancensus.core.get_cached_data")
     @patch("pycancensus.core.get_api_key", return_value="test_key")
-    def test_cache_hit_preserves_stored_label_metadata(self, mock_key, mock_read):
-        cached = pd.DataFrame({"v_CA21_1": [100]})
-        cached.attrs["census_vectors"] = [
-            {"Vector": "v_CA21_1", "Detail": "Population"}
-        ]
-        mock_read.return_value = cached
+    def test_cache_hit_rebuilds_label_metadata(self, mock_key, mock_read):
+        # The cache holds data with detailed labels, short labels get
+        # applied after reading it
+        mock_read.return_value = pd.DataFrame({"v_CA21_1: Population": [100]})
 
         result = get_census(
             "CA21",
@@ -117,6 +114,7 @@ class TestCacheKeys:
             quiet=True,
         )
 
+        assert list(result.columns) == ["v_CA21_1"]
         assert result.attrs["census_vectors"][0]["Detail"] == "Population"
 
 

@@ -92,7 +92,7 @@ try:
     toronto_income = pc.get_census(
         dataset='CA21',
         level='CMA',
-        regions={'CMA': '535'},  # Toronto CMA
+        regions={'CMA': '35535'},  # Toronto CMA
         vectors=[
             'v_CA21_923',  # Total household income groups
             'v_CA21_939',  # $100,000 and over

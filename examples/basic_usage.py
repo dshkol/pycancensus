@@ -65,15 +65,15 @@ def main():
     except Exception as e:
         print(f"Error: {e}\n")
     
-    # Example 5a: NEW - Vector hierarchy navigation
-    print("5a. Vector hierarchy navigation (NEW features):")
+    # Example 5a: Vector search and hierarchy navigation
+    print("5a. Vector search and hierarchy navigation:")
     try:
-        # Find census vectors with enhanced search
-        income_vectors = pc.find_census_vectors("CA16", "income")
+        # Query first, then dataset (same order as R cancensus)
+        income_vectors = pc.find_census_vectors("income", "CA16", query_type="keyword")
         print(f"Found {len(income_vectors)} income-related vectors")
         
         # Navigate vector hierarchies  
-        base_vector = "v_CA16_401"  # Total population
+        base_vector = "v_CA16_2510"  # Low-income status total
         parents = pc.parent_census_vectors(base_vector, dataset="CA16")
         children = pc.child_census_vectors(base_vector, dataset="CA16") 
         print(f"Vector {base_vector}: {len(parents)} parents, {len(children)} children")
@@ -87,8 +87,9 @@ def main():
         data = pc.get_census(
             dataset="CA21",  # Updated to latest census
             regions={"CMA": "59933"},  # Vancouver CMA
-            vectors=["v_CA21_1", "v_CA21_2"],  # Total population vectors
-            level="CSD"  # Census Subdivision level
+            vectors=["v_CA21_1", "v_CA21_2"],  # Population 2021 and 2016
+            level="CSD",  # Census Subdivision level
+            labels="detailed",  # column names include the variable label
         )
         print(data.head())
         print(f"Data shape: {data.shape}\n")
@@ -103,7 +104,8 @@ def main():
             regions={"CMA": "59933"},  # Vancouver CMA  
             vectors=["v_CA21_1"],  # Total population
             level="CSD",
-            geo_format="geopandas"
+            geo_format="geopandas",
+            labels="short",  # vector columns named by code, e.g. v_CA21_1
         )
         print(f"GeoDataFrame shape: {geo_data.shape}")
         print(f"Columns: {list(geo_data.columns)}")
@@ -126,12 +128,29 @@ def main():
     except Exception as e:
         print(f"Error: {e}\n")
     
+    # Example 9: labelled columns, French labels and named vectors (0.3.0)
+    print("9. Labelled columns, French labels and named vectors:")
+    try:
+        labelled = pc.get_census(
+            dataset="CA21",
+            regions={"CMA": "59933"},
+            vectors={"pop": "v_CA21_1", "median_hh_income": "v_CA21_906"},
+            level="CSD",
+            labels="labelled",  # standard column names, labels in attrs
+            language="fr",
+        )
+        print(f"Columns: {list(labelled.columns)}")
+        labels = labelled.attrs["column_labels"]
+        print(f"Label of median_hh_income: {labels['median_hh_income']}")
+        print()
+    except Exception as e:
+        print(f"Error: {e}\n")
+
     print("=== Examples complete ===")
-    print("\nNew in this version:")
-    print("- Vector hierarchy navigation functions")
-    print("- Enhanced error handling with helpful messages")  
-    print("- Progress indicators for large downloads")
-    print("- Full R cancensus library equivalence")
+    print("\nNew in 0.3.0:")
+    print("- French labels (language='fr') and labels='labelled'")
+    print("- Named vectors, e.g. vectors={'pop': 'v_CA21_1'}")
+    print("- All CensusMapper datasets, including TX2018 and CA16xSD")
     print("\nTo run these examples with real data:")
     print("1. Get a free API key at: https://censusmapper.ca/users/sign_up")
     print("2. Set your API key: pc.set_api_key('your_key_here')")

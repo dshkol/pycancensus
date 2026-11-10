@@ -41,7 +41,8 @@ def get_intersecting_geometries(
         A CensusMapper dataset identifier.
     level : str
         The census aggregation level to retrieve. One of "Regions", "PR", "CMA",
-        "CD", "CSD", "CT", "DA", "EA" (for 1996), or "DB" (for 2001-2021).
+        "CA", "CMACA", "CD", "CSD", "CT", "DA", "EA" (for 1996), or "DB"
+        (for 2001-2021).
     geometry : gpd.GeoDataFrame, gpd.GeoSeries, Point, Polygon, or MultiPolygon
         A valid geometry object. Any projection is accepted - objects will be
         reprojected to WGS84 (EPSG:4326) for server-side intersections.

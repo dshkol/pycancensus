@@ -10,9 +10,14 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 project = 'pycancensus'
-copyright = '2024, Dmitry Shkolnik'
+copyright = '2025-2026, Dmitry Shkolnik'
 author = 'Dmitry Shkolnik'
-release = '0.1.0'
+
+# Single source of truth: the package's __version__
+import re as _re
+with open(os.path.join(os.path.dirname(__file__), '..', 'pycancensus', '__init__.py')) as _f:
+    release = _re.search(r'__version__ = "([^"]+)"', _f.read()).group(1)
+version = release
 
 # Check if we're building on Read the Docs
 on_rtd = os.environ.get('READTHEDOCS') == 'True'

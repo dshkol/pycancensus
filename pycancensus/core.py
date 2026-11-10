@@ -5,6 +5,8 @@ Core functionality for accessing Canadian Census data through the CensusMapper A
 import hashlib
 import io
 import json
+import re
+import sys
 import warnings
 from datetime import datetime
 from typing import Dict, List, Optional, Union
@@ -13,27 +15,39 @@ import pandas as pd
 import geopandas as gpd
 import requests
 
-from .settings import get_api_key, get_cache_path, CENSUSMAPPER_API_URL
+from .settings import (
+    get_api_key,
+    get_language,
+    get_labels,
+    validate_language,
+    validate_labels,
+    first_time_this_session,
+    CENSUSMAPPER_API_URL,
+    VALID_LABELS,
+)
 from .resilience import CensusAPIError, NetworkError, get_session
 from .cache import get_cached_data, cache_data
 from .utils import validate_dataset, validate_level, process_regions
 from .progress import show_request_preview, create_progress_for_request
 
 
-_CACHE_SCHEMA_VERSION = 2
+# Version 3: cached results no longer depend on labels or language, these
+# get applied after reading the cache
+_CACHE_SCHEMA_VERSION = 3
 
 
 def get_census(
     dataset: str,
     regions: Dict[str, Union[str, List[str]]],
-    vectors: Optional[List[str]] = None,
+    vectors: Optional[Union[List[str], Dict[str, str]]] = None,
     level: str = "Regions",
     geo_format: Optional[str] = None,
     resolution: str = "simplified",
-    labels: str = "detailed",
+    labels: Optional[str] = None,
     use_cache: bool = True,
     quiet: bool = False,
     api_key: Optional[str] = None,
+    language: Optional[str] = None,
 ) -> Union[pd.DataFrame, gpd.GeoDataFrame]:
     """
     Access Canadian census data through the CensusMapper API.
@@ -44,23 +58,57 @@ def get_census(
     Parameters
     ----------
     dataset : str
-        A CensusMapper dataset identifier (e.g., 'CA16', 'CA21').
+        A CensusMapper dataset identifier, e.g. 'CA21', 'CA16xSD' or
+        'TX2018', or a census year such as 2021 (see list_census_datasets()).
     regions : dict
         A dictionary of census regions to retrieve. Keys must be valid census
         aggregation levels.
-    vectors : list of str, optional
+    vectors : list of str or dict, optional
         CensusMapper variable names of the census variables to download.
-        If None, only geographic data will be downloaded.
+        If None, only geographic data will be downloaded. A dict names the
+        columns, mapping column name to vector, e.g.
+        ``{"pop": "v_CA21_1", "v_CA21_2": "v_CA21_2"}`` (R's
+        ``c(pop = "v_CA21_1")``). Vectors given under their own code (or an
+        empty name) keep their vector code as column name, and so do all
+        other vector columns once any vector is named. With
+        ``labels='labelled'`` a named column keeps its variable's label, and
+        if the name is already used by another column, like ``Population``,
+        that column gets a trailing underscore (``Population_``); with other
+        labels such a name is an error. :func:`label_vectors` still reports
+        vector codes.
     level : str, default 'Regions'
-        The census aggregation level to retrieve. One of 'Regions', 'PR',
-        'CMA', 'CD', 'CSD', 'CT', 'DA', 'EA' (for 1996), or 'DB' (for 2001-2021).
+        The census aggregation level to retrieve. One of 'Regions', 'C',
+        'PR', 'CMA', 'CA', 'CMACA', 'CD', 'CSD', 'CT', 'DA', 'EA' (for 1996), or
+        'DB' (for 2001-2021). 'CMA', 'CA' and 'CMACA' all refer to the same
+        level, which contains both census metropolitan areas and census
+        agglomerations.
     geo_format : str, optional
         Format for geographic information. Set to 'geopandas' to return a
         GeoDataFrame with geometry. If None, returns DataFrame without geometry.
     resolution : str, default 'simplified'
         Resolution of geographic data. Either 'simplified' or 'high'.
-    labels : str, default 'detailed'
-        Variable label format. Either 'detailed' or 'short'.
+    labels : str, optional
+        How to name and label the columns, one of 'detailed', 'short' or
+        'labelled'. Defaults to :func:`get_labels`, and to 'detailed' if no
+        default is set. The default is planned to change to 'labelled' in a
+        future version, so to keep code working pass ``labels`` or set a
+        default with e.g. ``pc.set_labels("detailed")``. A notice points this
+        out once per session if neither is set.
+
+        - 'detailed' names census variable columns by vector and label, e.g.
+          ``"v_CA21_1: Population, 2021"``.
+        - 'short' names them by vector only, e.g. ``"v_CA21_1"``; use
+          :func:`label_vectors` for the labels.
+        - 'labelled' also names them by vector only, and stores the label of
+          each column in ``result.attrs["column_labels"]``, a dict mapping
+          column names to labels (the analog of R's per-column ``"label"``
+          attribute). The other columns get short names, types and an order
+          that are the same across datasets and with or without
+          ``geo_format``: ``GeoUID``, ``Type``, ``Name``, ``Area``,
+          ``Population``, ``Dwellings``, ``Households``,
+          ``Population_Previous``, ``Quality``, the ``*_UID`` columns and so
+          on. These have labels too, e.g. ``"Population 2021"`` for
+          ``Population``, with the year of the census the column refers to.
     use_cache : bool, default True
         Whether to use cached data if available.
     quiet : bool, default False
@@ -68,6 +116,16 @@ def get_census(
     api_key : str, optional
         API key for CensusMapper API. If None, uses environment variable
         or previously set key.
+    language : str, optional
+        Language of the census variable labels, 'en' or 'fr'. Defaults to
+        :func:`get_language`, which is 'en' unless set with
+        :func:`set_language`. This applies to the column names with
+        ``labels='detailed'``, to the column labels with
+        ``labels='labelled'``, and to :func:`label_vectors`. It does not
+        apply to region names or the names of the other columns. Not all
+        datasets have French labels: vectors without them fall back to
+        English, with a warning once per session and dataset. Changing the
+        language does not download the data again.
 
     Returns
     -------
@@ -93,9 +151,46 @@ def get_census(
     ...     level='CSD',
     ...     geo_format='geopandas'
     ... )
+
+    >>> # Name columns by vector, with the labels in attrs["column_labels"]
+    >>> data = pc.get_census(
+    ...     dataset='CA16',
+    ...     regions={'CMA': '59933'},
+    ...     vectors=['v_CA16_408', 'v_CA16_409'],
+    ...     level='CSD',
+    ...     labels='labelled'
+    ... )
+    >>> data.attrs["column_labels"]["v_CA16_408"]
+
+    >>> # Name columns by naming vectors
+    >>> data = pc.get_census(
+    ...     dataset='CA21',
+    ...     regions={'CMA': '59933'},
+    ...     vectors={'pop': 'v_CA21_1'},
+    ...     level='CSD',
+    ...     labels='short'
+    ... )
+
+    >>> # Get the labels in French
+    >>> data = pc.get_census(
+    ...     dataset='CA16',
+    ...     regions={'CMA': '59933'},
+    ...     vectors=['v_CA16_408', 'v_CA16_409'],
+    ...     level='CSD',
+    ...     language='fr'
+    ... )
     """
 
     # Validate inputs
+    language = get_language() if language is None else validate_language(language)
+    if labels is None:
+        labels = get_labels()
+        if labels is None:
+            labels = "detailed"
+            if not quiet:
+                _notice_labels_default()
+    labels = validate_labels(labels)
+    vectors, vector_names = _split_named_vectors(vectors)
     dataset = validate_dataset(dataset)
     level = validate_level(level)
 
@@ -116,7 +211,8 @@ def get_census(
             processed_regions, vectors, level, dataset, geo_format, quiet=False
         )
 
-    # Check cache first
+    # Check cache first. The cache holds the data as downloaded, labels and
+    # language get applied afterwards, so changing them doesn't download again
     cache_key = _generate_cache_key(
         dataset,
         processed_regions,
@@ -124,8 +220,8 @@ def get_census(
         level,
         geo_format,
         resolution,
-        labels,
     )
+    result = None
     if use_cache:
         cached_data = get_cached_data(cache_key)
         if cached_data is not None:
@@ -134,8 +230,157 @@ def get_census(
             from .recalls import check_recalled_data_and_warn
 
             check_recalled_data_and_warn(cache_key)
-            return cached_data
+            result = cached_data
 
+    if result is None:
+        result = _download_census(
+            dataset,
+            processed_regions,
+            vectors,
+            level,
+            geo_format,
+            resolution,
+            use_cache,
+            quiet,
+            api_key,
+            cache_key,
+        )
+
+    result = _apply_labels(
+        result, dataset, level, vectors, labels, language, quiet, api_key
+    )
+    if vector_names:
+        result = _apply_vector_names(result, vector_names, labels)
+    return result
+
+
+def _split_named_vectors(vectors):
+    """
+    Split ``vectors`` into the list of vector codes to request and a
+    ``{vector code: column name}`` dict for the vectors given a name.
+    """
+    if vectors is None:
+        return None, {}
+    if isinstance(vectors, str):
+        vectors = [vectors]
+    if not isinstance(vectors, dict):
+        vectors = list(vectors)
+        if not all(isinstance(v, str) for v in vectors):
+            raise ValueError("vectors must be strings, like 'v_CA21_1'")
+        return vectors, {}
+
+    codes, names = [], {}
+    for name, code in vectors.items():
+        if not isinstance(code, str) or not isinstance(name, str):
+            raise ValueError(
+                "vectors given as a dict must map column names to vector "
+                "codes, e.g. {'pop': 'v_CA21_1'}"
+            )
+        if code in codes:
+            raise ValueError(f"Vector {code!r} is named more than once in vectors")
+        codes.append(code)
+        if name and name != code:
+            names[code] = name
+    return codes, names
+
+
+def _apply_vector_names(result, vector_names, labels):
+    """
+    Rename vector columns to the names chosen in ``vectors``, mirroring R
+    cancensus: vector columns are named by code first, then renamed.
+    """
+    # With labels='detailed' the vector columns are "v_...: label"
+    to_codes = {
+        c: c.split(":", 1)[0]
+        for c in result.columns
+        if isinstance(c, str) and c.startswith("v_") and ":" in c
+    }
+    if to_codes:
+        result = result.rename(columns=to_codes)
+
+    to_rename = {
+        code: name for code, name in vector_names.items() if code in result.columns
+    }
+    chosen = list(to_rename.values())
+    column_labels = dict(result.attrs.get("column_labels", {}))
+
+    clashes = [
+        name for name in chosen if name in result.columns and name not in to_rename
+    ]
+    if clashes and labels == "labelled":
+        # Names chosen for vectors win; the clashing column gets a trailing
+        # underscore, unless that name is taken too (R add_underscore_to_clashes)
+        vector_clashes = [c for c in clashes if c.startswith("v_")]
+        other_clashes = [c for c in clashes if not c.startswith("v_")]
+        taken = [
+            f"{c}_"
+            for c in other_clashes
+            if f"{c}_" in result.columns or f"{c}_" in chosen
+        ]
+        if taken or vector_clashes:
+            raise ValueError(
+                "Names chosen for vectors clash with the columns "
+                + ", ".join(f"'{c}'" for c in (taken or vector_clashes))
+                + ". Choose different names."
+            )
+        result = result.rename(columns={c: f"{c}_" for c in other_clashes})
+        for c in other_clashes:
+            if c in column_labels:
+                column_labels[f"{c}_"] = column_labels.pop(c)
+    elif clashes:
+        raise ValueError(
+            "Names chosen for vectors clash with existing columns "
+            + ", ".join(f"'{c}'" for c in clashes)
+            + ". Choose different names, or use labels='labelled', which "
+            "renames the other column instead."
+        )
+
+    attrs = dict(result.attrs)
+    result = result.rename(columns=to_rename)
+    result.attrs.update(attrs)
+    for code, name in to_rename.items():
+        if code in column_labels:
+            column_labels[name] = column_labels.pop(code)
+    if column_labels:
+        result.attrs["column_labels"] = column_labels
+    return result
+
+
+def _notice_labels_default() -> None:
+    """
+    Prepare users for the planned change of the labels default, once per
+    session. A notice and not a warning, like R cancensus, so code that
+    turns warnings into errors keeps working.
+    """
+    if not first_time_this_session("labels_default_notice"):
+        return
+    print(
+        'The default of `labels="detailed"` in `get_census()` is planned to '
+        'change to `labels="labelled"` in a future version. To make sure your '
+        "code keeps working, set the `labels` parameter or set a default, e.g. "
+        '`pc.set_labels("detailed")`.\n'
+        'Check out `labels="labelled"`, which gives short and consistent column '
+        "names, with the full descriptions in column labels. See "
+        "`help(pc.get_census)` for details.\n"
+        "This message is shown once per session.",
+        file=sys.stderr,
+    )
+
+
+def _download_census(
+    dataset,
+    processed_regions,
+    vectors,
+    level,
+    geo_format,
+    resolution,
+    use_cache,
+    quiet,
+    api_key,
+    cache_key,
+):
+    """Download census data and cache it, with English, detailed labels."""
+    labels = "detailed"
     # Build API request exactly like the R package
     base_url = f"{CENSUSMAPPER_API_URL}/"
 
@@ -163,9 +408,13 @@ def get_census(
     if vectors:
         request_data["vectors"] = json.dumps(vectors)
 
-    # Create progress indicator for large requests
-    progress = create_progress_for_request(
-        processed_regions, vectors or [], level, geo_format
+    # Create progress indicator for large requests (none when quiet)
+    progress = (
+        None
+        if quiet
+        else create_progress_for_request(
+            processed_regions, vectors or [], level, geo_format
+        )
     )
 
     try:
@@ -218,7 +467,9 @@ def get_census(
                 result = _process_geojson_response(data, vectors, labels)
             else:
                 # data.csv returns CSV
-                result = _process_csv_response(response.text, vectors, labels)
+                result = _process_csv_response(
+                    response.content.decode("utf-8"), vectors, labels
+                )
 
         # Cache the result. use_cache=False means "don't read stale data",
         # not "don't cache": a forced refresh still updates the cache,
@@ -263,10 +514,13 @@ def get_census(
         raise RuntimeError(f"Failed to process API response: {e}") from e
 
 
-def _generate_cache_key(
-    dataset, regions, vectors, level, geo_format, resolution, labels
-):
-    """Generate a cache key for the given parameters."""
+def _generate_cache_key(dataset, regions, vectors, level, geo_format, resolution):
+    """
+    Generate a cache key for the given parameters.
+
+    Labels and language are left out on purpose: they get applied after
+    reading the cache, so changing them reuses the cached download.
+    """
     payload = {
         "schema": _CACHE_SCHEMA_VERSION,
         "dataset": dataset,
@@ -275,7 +529,6 @@ def _generate_cache_key(
         "level": level,
         "geo_format": geo_format,
         "resolution": resolution,
-        "labels": labels,
     }
     serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(serialized.encode()).hexdigest()
@@ -333,7 +586,9 @@ def _fetch_census_with_geometry_and_vectors(
     csv_multipart_data = {key: (None, value) for key, value in request_data.items()}
     csv_response = get_session().post(f"{base_url}data.csv", files=csv_multipart_data)
     data_version = csv_response.headers.get("data-version")
-    csv_result = _process_csv_response(csv_response.text, vectors, labels)
+    csv_result = _process_csv_response(
+        csv_response.content.decode("utf-8"), vectors, labels
+    )
 
     # 3. Merge the results on geographic identifier
     return _merge_geo_and_csv_results(geo_result, csv_result), data_version, geo_version
@@ -436,6 +691,11 @@ def _merge_geo_and_csv_results(
     result = result.drop(columns=["_merge"])
     if merge_key_csv != merge_key_geo and merge_key_csv in result.columns:
         result = result.drop(columns=[merge_key_csv])
+
+    # The merge keeps the geometry frame's attrs, which lack the vector
+    # metadata that label_vectors() reads (R cancensus 0.6.2 fix)
+    if "census_vectors" in csv_result.attrs:
+        result.attrs["census_vectors"] = csv_result.attrs["census_vectors"]
 
     return result
 
@@ -622,3 +882,372 @@ def _process_geojson_response(data, vectors, labels):
 
     # Apply shared normalization
     return _normalize_census_dataframe(gdf, vectors, labels)
+
+
+# ---------------------------------------------------------------------------
+# Labels and language, applied after reading the cache (R cancensus 0.6.2)
+# ---------------------------------------------------------------------------
+
+# Column names and labels for the columns that are not census vectors, used
+# for labels="labelled". Mirrors census_column_labels in R cancensus: rows are
+# in the order columns get returned in, names are the same across datasets
+# and for data and geometry requests, and the year goes in the label.
+# {year} is the year of the census the data refers to, {previous_year} that
+# of the census before it.
+_CENSUS_COLUMN_LABELS = [
+    # (column, short_name, en, fr)
+    ("GeoUID", "GeoUID", "Geographic identifier", "Identifiant géographique"),
+    ("Type", "Type", "Geographic level", "Niveau géographique"),
+    ("Region Name", "Name", "Region name", "Nom de la région"),
+    ("name", "Name", "Region name", "Nom de la région"),
+    ("Area (sq km)", "Area", "Area (sq km)", "Superficie (km²)"),
+    ("Shape Area", "Area", "Area (sq km)", "Superficie (km²)"),
+    ("Population", "Population", "Population {year}", "Population {year}"),
+    ("Dwellings", "Dwellings", "Dwellings {year}", "Logements {year}"),
+    ("Households", "Households", "Households {year}", "Ménages {year}"),
+    (
+        "Adjusted Population (previous Census)",
+        "Population_Previous",
+        "Population {previous_year}",
+        "Population {previous_year}",
+    ),
+    ("Population 2016", "Population_Previous", "Population 2016", "Population 2016"),
+    ("Population 2011", "Population_Previous", "Population 2011", "Population 2011"),
+    ("Dwellings 2016", "Dwellings_Previous", "Dwellings 2016", "Logements 2016"),
+    ("Dwellings 2011", "Dwellings_Previous", "Dwellings 2011", "Logements 2011"),
+    ("Households 2016", "Households_Previous", "Households 2016", "Ménages 2016"),
+    ("Households 2011", "Households_Previous", "Households 2011", "Ménages 2011"),
+    (
+        "NHS Non-Return Rate",
+        "NHS_Non_Response",
+        "NHS non-response rate {year}",
+        "Taux de non-réponse de l'ENM {year}",
+    ),
+    (
+        "Quality Flags",
+        "Quality",
+        "Data quality flags",
+        "Indicateurs de qualité des données",
+    ),
+    ("key", "Key", "Geographic key", "Clé géographique"),
+    ("C_UID", "C_UID", "Canada identifier", "Identifiant du Canada"),
+    (
+        "PR_UID",
+        "PR_UID",
+        "Province or territory identifier",
+        "Identifiant de la province ou du territoire",
+    ),
+    (
+        "CD_UID",
+        "CD_UID",
+        "Census division identifier",
+        "Identifiant de la division de recensement",
+    ),
+    (
+        "CMA_UID",
+        "CMA_UID",
+        "Census metropolitan area or census agglomeration identifier",
+        "Identifiant de la région métropolitaine de recensement ou de "
+        "l'agglomération de recensement",
+    ),
+    (
+        "CSD_UID",
+        "CSD_UID",
+        "Census subdivision identifier",
+        "Identifiant de la subdivision de recensement",
+    ),
+    (
+        "CT_UID",
+        "CT_UID",
+        "Census tract identifier",
+        "Identifiant du secteur de recensement",
+    ),
+    (
+        "DA_UID",
+        "DA_UID",
+        "Dissemination area identifier",
+        "Identifiant de l'aire de diffusion",
+    ),
+]
+
+# GeoJSON property names and the names R cancensus gives them (base_name_change)
+_GEO_BASE_NAMES = {
+    "id": "GeoUID",
+    "a": "Shape Area",
+    "t": "Type",
+    "dw": "Dwellings",
+    "hh": "Households",
+    "pop": "Population",
+    "pop2": "Adjusted Population (previous Census)",
+    "nrr": "NHS Non-Return Rate",
+    "q": "Quality Flags",
+    "pop11": "Population 2011",
+    "pop16": "Population 2016",
+    "hh11": "Households 2011",
+    "hh16": "Households 2016",
+    "dw11": "Dwellings 2011",
+    "dw16": "Dwellings 2016",
+}
+
+# What the generic parent identifiers of GeoJSON features refer to at each
+# level (R cancensus name_change_for_level)
+_GEO_LEVEL_NAMES = {
+    "DB": {"rpid": "DA_UID", "rgid": "CSD_UID", "ruid": "CT_UID", "rguid": "CMA_UID"},
+    "DA": {"rpid": "CSD_UID", "rgid": "CD_UID", "ruid": "CT_UID", "rguid": "CMA_UID"},
+    "EA": {"rpid": "CSD_UID", "rgid": "CD_UID", "ruid": "CT_UID", "rguid": "CMA_UID"},
+    "CT": {"rpid": "CMA_UID", "rgid": "PR_UID", "ruid": "CSD_UID", "rguid": "CD_UID"},
+    "CSD": {"rpid": "CD_UID", "rgid": "PR_UID", "ruid": "CMA_UID"},
+    "CD": {"rpid": "PR_UID", "rgid": "C_UID"},
+    "CMA": {"rpid": "PR_UID", "rgid": "C_UID"},
+    "CA": {"rpid": "PR_UID", "rgid": "C_UID"},
+    "CMACA": {"rpid": "PR_UID", "rgid": "C_UID"},
+    "PR": {"rpid": "C_UID"},
+    "C": {},
+}
+_GEO_PARENT_IDS = ("rpid", "rgid", "ruid", "rguid")
+
+_COUNT_COLUMNS = [
+    f"{name}{suffix}"
+    for name in ("Population", "Dwellings", "Households")
+    for suffix in ("", "_Previous")
+]
+_NUMERIC_COLUMNS = _COUNT_COLUMNS + ["Area", "NHS_Non_Response"]
+
+
+def _apply_labels(result, dataset, level, vectors, labels, language, quiet, api_key):
+    """
+    Name and label the columns of downloaded data as requested.
+
+    The cached data has detailed English column names; this renames vector
+    columns for 'short' and 'labelled', harmonizes the other columns for
+    'labelled', and swaps in labels in the requested language.
+    """
+    if labels == "labelled":
+        result = _label_census_columns(result, dataset, level, language)
+
+    if not vectors:
+        return result
+
+    vector_columns = [
+        c for c in result.columns if isinstance(c, str) and c.startswith("v_")
+    ]
+    census_vectors = [_parse_vector_column(c) for c in vector_columns]
+    census_vectors = _translate_census_vectors(
+        census_vectors, dataset, language, quiet, api_key
+    )
+
+    column_labels = dict(result.attrs.get("column_labels", {}))
+    to_rename = {}
+    if labels != "detailed":
+        to_rename = {
+            column: info["Vector"]
+            for column, info in zip(vector_columns, census_vectors)
+            if column != info["Vector"]
+        }
+    elif language != "en":
+        to_rename = {
+            column: f"{info['Vector']}: {info['Detail']}"
+            for column, info in zip(vector_columns, census_vectors)
+        }
+        to_rename = {old: new for old, new in to_rename.items() if old != new}
+    if to_rename:
+        result = result.rename(columns=to_rename)
+
+    if labels == "labelled":
+        for info in census_vectors:
+            column_labels[info["Vector"]] = info["Detail"]
+        result.attrs["column_labels"] = column_labels
+
+    result.attrs["census_vectors"] = census_vectors
+    return result
+
+
+def _parse_vector_column(column: str) -> dict:
+    """
+    Split a column name "<vector>: <label>" into vector and label. Only the
+    first colon separates the two, labels can contain further colons, e.g.
+    "Size of census family: 2 persons".
+    """
+    vector, _, detail = column.partition(":")
+    return {"Vector": vector, "Detail": detail.strip()}
+
+
+def _translate_census_vectors(census_vectors, dataset, language, quiet, api_key):
+    """
+    Replace the English labels the API attaches to the data with labels in
+    the requested language. The data itself doesn't depend on the language,
+    so this doesn't touch the data cache. If the labels can't be retrieved
+    the data is still usable with English labels, so this doesn't raise.
+    """
+    if language == "en" or not census_vectors:
+        return census_vectors
+    from .vectors import _fetch_census_vectors, _localize_census_vectors
+
+    try:
+        vector_info = _fetch_census_vectors(dataset, quiet=True, api_key=api_key)
+    except Exception as e:
+        if not quiet:
+            warnings.warn(
+                "Could not retrieve French labels, using English labels "
+                f"instead. {e}",
+                stacklevel=3,
+            )
+        return census_vectors
+    wanted = {info["Vector"] for info in census_vectors}
+    localized = _localize_census_vectors(
+        vector_info[vector_info["vector"].isin(wanted)],
+        dataset,
+        language,
+        warn=not quiet,
+    )
+    translations = dict(zip(localized["vector"], localized["label"]))
+    return [
+        {**info, "Detail": translations.get(info["Vector"], info["Detail"])}
+        for info in census_vectors
+    ]
+
+
+def _census_year_for_dataset(dataset: str) -> Optional[int]:
+    """
+    The year of the census the non-vector columns of a dataset refer to.
+
+    Tax and cross-tabulation datasets report these columns for the census
+    whose geography they use, e.g. TX2018 has the 2016 population. Returns
+    None if the year can't be determined.
+    """
+    geo_dataset = dataset
+    if not re.fullmatch(r"CA\d+", dataset):
+        try:
+            from .datasets import list_census_datasets
+
+            datasets = list_census_datasets(quiet=True)
+            match = datasets.loc[datasets["dataset"] == dataset, "geo_dataset"]
+            geo_dataset = match.iloc[0] if len(match) else None
+        except Exception:
+            return None
+        if not isinstance(geo_dataset, str) or not re.fullmatch(r"CA\d+", geo_dataset):
+            return None
+    year = int(geo_dataset[2:])
+    return year + 2000 if year < 100 else year
+
+
+def _standardize_geo_columns(result, level):
+    """
+    Give GeoJSON properties the column names R cancensus gives them, so data
+    and geometry requests have the same columns (R transform_geo()).
+    """
+    to_rename = {
+        raw: name
+        for raw, name in _GEO_BASE_NAMES.items()
+        if raw in result.columns and name not in result.columns
+    }
+    if to_rename:
+        result = result.rename(columns=to_rename)
+
+    parent_ids = [c for c in _GEO_PARENT_IDS if c in result.columns]
+    if not parent_ids:
+        return result
+
+    if level != "Regions":
+        names = _GEO_LEVEL_NAMES.get(level, {})
+        to_rename = {
+            raw: name
+            for raw, name in names.items()
+            if raw in result.columns and name not in result.columns
+        }
+        result = result.rename(columns=to_rename)
+    elif "Type" in result.columns:
+        # Regions of different levels, the identifiers refer to different
+        # levels row by row
+        types = result["Type"].astype(str)
+        new_columns = {}
+        for region_type in types.unique():
+            rows = (types == region_type).to_numpy()
+            for raw, name in _GEO_LEVEL_NAMES.get(region_type, {}).items():
+                if raw not in result.columns or name in result.columns:
+                    continue
+                column = new_columns.setdefault(
+                    name, pd.Series(pd.NA, index=result.index, dtype=object)
+                )
+                values = result.loc[rows, raw].replace("", pd.NA)
+                column.loc[rows] = values.to_numpy()
+        for name, column in new_columns.items():
+            result[name] = column
+
+    remaining = [c for c in _GEO_PARENT_IDS if c in result.columns]
+    return result.drop(columns=remaining)
+
+
+def _as_string_ids(series: pd.Series) -> pd.Series:
+    """Identifiers as strings, keeping missing values missing."""
+    return (
+        series.astype(object)
+        .where(series.notna(), None)
+        .map(lambda v: v if v is None or isinstance(v, str) else str(v))
+    )
+
+
+def _label_census_columns(result, dataset, level, language):
+    """
+    Harmonize the columns that are not census vectors for labels='labelled':
+    give them the same names, types and order for data and geometry
+    requests, and record their labels in attrs["column_labels"].
+    """
+    result = _standardize_geo_columns(result, level)
+
+    # Requests for both data and geometry have these twice, with the same values
+    duplicates = [
+        geo
+        for data, geo in (("Region Name", "name"), ("Area (sq km)", "Shape Area"))
+        if data in result.columns and geo in result.columns
+    ]
+    if duplicates:
+        result = result.drop(columns=duplicates)
+
+    rows = [row for row in _CENSUS_COLUMN_LABELS if row[0] in result.columns]
+    column_names = []
+    taken = set()
+    for column, short_name, _, _ in rows:
+        # Only the first column with a short name gets it
+        column_names.append(short_name if short_name not in taken else column)
+        taken.add(short_name)
+    to_rename = {
+        row[0]: name for row, name in zip(rows, column_names) if row[0] != name
+    }
+    if to_rename:
+        result = result.rename(columns=to_rename)
+
+    if "Name" in result.columns:
+        result["Name"] = _as_string_ids(result["Name"])
+    for column in _NUMERIC_COLUMNS:
+        if column in column_names:
+            # float like the CSV columns, so types don't depend on geo_format
+            result[column] = pd.to_numeric(result[column], errors="coerce").astype(
+                "float64"
+            )
+    for column in column_names:
+        if column in ("GeoUID", "Key", "Quality") or column.endswith("_UID"):
+            result[column] = _as_string_ids(result[column])
+    if "Type" in column_names and not isinstance(
+        result["Type"].dtype, pd.CategoricalDtype
+    ):
+        result["Type"] = result["Type"].astype("category")
+
+    year = _census_year_for_dataset(dataset)
+    column_labels = {}
+    for (_, _, en, fr), name in zip(rows, column_names):
+        label = en if language == "en" else fr
+        label = label.replace("{year}", "" if year is None else str(year))
+        label = label.replace("{previous_year}", "" if year is None else str(year - 5))
+        column_labels[name] = label.strip()
+
+    # Geometry stays last
+    geometry = getattr(result, "_geometry_column_name", None)
+    if geometry not in result.columns:
+        geometry = None
+    ordered = column_names + [c for c in result.columns if c not in column_names]
+    if geometry is not None:
+        ordered = [c for c in ordered if c != geometry] + [geometry]
+    result = result[ordered]
+    result.attrs["column_labels"] = column_labels
+    return result

@@ -240,6 +240,62 @@ except Exception as e:
     print("This requires a valid API key and internet connection")
 ```
 
+## 6. Labels, French and Named Vectors (new in 0.3.0)
+
+`get_census()` can name vector columns for you (pass `vectors` as a dict),
+give the other columns standard names that are the same across datasets
+(`labels="labelled"`), and return labels in French (`language="fr"`). With
+`labels="labelled"` the label of each column is in
+`df.attrs["column_labels"]`:
+
+```{code-cell} python
+import pycancensus as pc
+
+try:
+    van = pc.get_census(
+        dataset="CA21",
+        regions={"CMA": "59933"},  # Vancouver CMA
+        vectors={"pop": "v_CA21_1", "median_hh_income": "v_CA21_906"},
+        level="CSD",
+        labels="labelled",
+        language="fr",
+        quiet=True,
+    )
+    display(van[["Name", "Population", "pop", "median_hh_income"]].head())
+
+    # Labels of each column, in the requested language
+    labels = van.attrs["column_labels"]
+    print(f"median_hh_income: {labels['median_hh_income']}")
+    print(f"Population: {labels['Population']}")
+except Exception as e:
+    print(f"Error retrieving data: {e}")
+```
+
+`pc.set_labels()` and `pc.set_language()` set these for the whole session.
+
+Census agglomerations are level `"CA"` in `list_census_regions()`, as in R,
+so filter on both levels to get all metropolitan areas. Taxfiler datasets
+(`TX2000` to `TX2018`) work like census data, at the census tract level:
+
+```{code-cell} python
+try:
+    regions = pc.list_census_regions("CA21", quiet=True)
+    cmas_and_cas = regions[regions["level"].isin(["CMA", "CA"])]
+    print(f"CMAs and CAs: {cmas_and_cas['level'].value_counts().to_dict()}")
+
+    tx = pc.get_census(
+        dataset="TX2018",
+        regions={"CMA": "59933"},
+        vectors=["v_TX2018_1"],  # Taxfilers
+        level="CT",
+        labels="short",
+        quiet=True,
+    )
+    print(f"Taxfilers in Vancouver CMA census tracts, 2018: {tx['v_TX2018_1'].sum():,.0f}")
+except Exception as e:
+    print(f"Error retrieving data: {e}")
+```
+
 ## Summary
 
 **This tutorial demonstrates the enhanced pycancensus capabilities:**
@@ -250,6 +306,7 @@ except Exception as e:
 4. **find_census_vectors()** & **visualize_vector_hierarchy()** - Exact, semantic, and keyword search; ASCII hierarchy trees
 5. **as_census_region_list()** & **add_unique_names_to_region_list()** - Region selection helpers
 6. **Real Data** - Actual census data retrieved and analyzed
+7. **Labels and language** - Named vectors, `labels="labelled"`, French labels and all CensusMapper datasets
 
 **Key Improvement**: Unlike previous versions, these hierarchy functions now work with **clear, well-defined parent-child relationships** in the census data structure.
 

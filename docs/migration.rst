@@ -85,6 +85,18 @@ All Core Functions Available
    * - ``list_cancensus_cache()``
      - ``list_cache()``
      - ✅ 100%
+   * - ``options(cancensus.user_agent_prefix = ...)``
+     - ``set_user_agent_prefix(...)``
+     - ✅ 100%
+   * - ``options(cancensus.language = ...)``
+     - ``set_language(...)``
+     - ✅ 100%
+   * - ``options(cancensus.labels = ...)``
+     - ``set_labels(...)``
+     - ✅ 100%
+   * - ``attr(census_data$v_CA21_1, "label")``
+     - ``census_data.attrs["column_labels"]["v_CA21_1"]``
+     - ✅ see below
    * - ``visualize_vector_hierarchy()``
      - ``visualize_vector_hierarchy()``
      - ✅ 100%
@@ -100,6 +112,24 @@ All Core Functions Available
    * - ``explore_census_regions()``
      - ``explore_census_regions()``
      - ✅ 100%
+   * - ``get_statcan_wds_data()``
+     - ``get_statcan_wds_data()``
+     - ✅ 100%
+   * - ``get_statcan_wds_metadata()``
+     - ``get_statcan_wds_metadata()``
+     - ✅ 100%
+   * - ``get_statcan_geo_suite()``
+     - ``get_statcan_geo_suite()``
+     - ✅ 100%
+   * - ``get_statcan_geographic_attributes()``
+     - ``get_statcan_geographic_attributes()``
+     - ✅ 100%
+   * - ``get_statcan_geographies()``
+     - ``get_statcan_geographies()``
+     - ✅ 100%
+   * - ``get_statcan_geography_relationships()``
+     - not ported, deprecated in R; use ``get_statcan_geographic_attributes("2021")``
+     - ➖
    * - ``list_recalled_cached_data()``
      - ``list_recalled_cached_data()``
      - ✅ 100%
@@ -123,10 +153,54 @@ Core Syntax Differences
      - ``{'CMA': '59933'}``
    * - ``c("v1", "v2", "v3")``
      - ``['v1', 'v2', 'v3']``
+   * - ``c(pop = "v_CA21_1")``
+     - ``{'pop': 'v_CA21_1'}``
    * - ``TRUE`` / ``FALSE``
      - ``True`` / ``False``
    * - ``NULL``
      - ``None``
+
+Labels and Language
+~~~~~~~~~~~~~~~~~~~
+
+``get_census()`` supports ``labels="labelled"`` and ``language="fr"`` like
+R cancensus 0.6.2. ``language`` is also a parameter of
+``list_census_vectors()``, ``find_census_vectors()``,
+``parent_census_vectors()``, ``child_census_vectors()``,
+``visualize_vector_hierarchy()`` and ``dataset_attribution()``.
+
+* pandas columns have no ``"label"`` attribute, so with
+  ``labels="labelled"`` the label of each column is in the
+  ``attrs["column_labels"]`` dict of the result, keyed by column name.
+  The column names, order and labels match R.
+* ``set_language()`` and ``set_labels()`` set session defaults, like the
+  ``cancensus.language`` and ``cancensus.labels`` options. The
+  ``PYCANCENSUS_LANGUAGE`` and ``PYCANCENSUS_LABELS`` environment variables
+  set them without code changes.
+* The default of ``labels`` is planned to change to ``"labelled"``, as in R.
+  Pass ``labels`` or call ``set_labels()`` to keep code working.
+* Named vectors: R's ``vectors = c(pop = "v_CA21_1")`` is
+  ``vectors={"pop": "v_CA21_1"}``. As in R, once any vector is named the
+  other vector columns are named by code, and with ``labels="labelled"`` a
+  name that clashes with a standard column renames that column with a
+  trailing underscore (``Population_``); other label modes raise an error.
+* Regions: ``list_census_regions()`` labels census agglomerations
+  ``"CA"`` like R, and ``"CMA"``, ``"CA"`` and ``"CMACA"`` are
+  interchangeable as ``level`` and ``regions`` keys in ``get_census()``.
+
+.. code-block:: r
+
+   census_data <- get_census("CA21", regions = list(CMA = "59933"),
+                             vectors = c("v_CA21_1"), level = "CSD",
+                             labels = "labelled", language = "fr")
+   attr(census_data$Population, "label")
+
+.. code-block:: python
+
+   census_data = pc.get_census("CA21", regions={"CMA": "59933"},
+                               vectors=["v_CA21_1"], level="CSD",
+                               labels="labelled", language="fr")
+   census_data.attrs["column_labels"]["Population"]
 
 Side-by-Side Examples
 ---------------------

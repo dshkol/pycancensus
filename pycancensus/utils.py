@@ -2,41 +2,64 @@
 Utility functions for pycancensus.
 """
 
+import re
 from typing import Dict, List, Union
 
 
-def validate_dataset(dataset: str) -> str:
+# Census years accepted in place of dataset IDs, as in R cancensus
+_DATASET_YEAR_ALIASES = {
+    "1996": "CA1996",
+    "2001": "CA01",
+    "2006": "CA06",
+    "2011": "CA11",
+    "2016": "CA16",
+    "2021": "CA21",
+}
+
+# CensusMapper dataset IDs: censuses (CA16, CA1996), cross-tabulations
+# (CA16xSD) and taxfiler data (TX2018)
+_DATASET_PATTERN = re.compile(r"(CA|TX)(\d{2}|\d{4})(XSD)?", re.IGNORECASE)
+
+
+def validate_dataset(dataset: Union[str, int]) -> str:
     """
     Validate and normalize dataset identifier.
 
     Parameters
     ----------
-    dataset : str
-        Dataset identifier like 'CA16', 'CA21', etc.
+    dataset : str or int
+        Dataset identifier like 'CA21', 'CA1996', 'CA16xSD' or 'TX2018'
+        (see list_census_datasets()). Matching ignores case. A census year
+        such as 2021 or '2021' is translated to its dataset ID, like R
+        cancensus does.
 
     Returns
     -------
     str
-        Validated dataset identifier.
+        Dataset identifier as CensusMapper spells it.
 
     Raises
     ------
     ValueError
         If dataset format is invalid.
     """
+    if isinstance(dataset, int) and not isinstance(dataset, bool):
+        dataset = str(dataset)
     if not isinstance(dataset, str):
         raise ValueError("Dataset must be a string")
 
-    dataset = dataset.upper().strip()
+    dataset = dataset.strip()
+    if dataset in _DATASET_YEAR_ALIASES:
+        return _DATASET_YEAR_ALIASES[dataset]
 
-    # Basic validation - should be like CA16, CA21, etc.
-    if not dataset.startswith("CA") or len(dataset) != 4:
+    match = _DATASET_PATTERN.fullmatch(dataset)
+    if not match:
         raise ValueError(
-            f"Invalid dataset format: {dataset}. "
-            "Expected format like 'CA16', 'CA21', etc."
+            f"Invalid dataset format: {dataset}. Expected an ID like 'CA21', "
+            "'CA1996', 'CA16xSD' or 'TX2018'; see list_census_datasets()."
         )
-
-    return dataset
+    prefix, digits, cross_tab = match.groups()
+    return prefix.upper() + digits + ("xSD" if cross_tab else "")
 
 
 def validate_level(level: str) -> str:
@@ -58,7 +81,20 @@ def validate_level(level: str) -> str:
     ValueError
         If level is invalid.
     """
-    valid_levels = ["C", "Regions", "PR", "CMA", "CD", "CSD", "CT", "DA", "EA", "DB"]
+    valid_levels = [
+        "C",
+        "Regions",
+        "PR",
+        "CMA",
+        "CA",
+        "CMACA",
+        "CD",
+        "CSD",
+        "CT",
+        "DA",
+        "EA",
+        "DB",
+    ]
 
     if level not in valid_levels:
         raise ValueError(
@@ -95,7 +131,21 @@ def process_regions(
     if not regions:
         raise ValueError("At least one region must be specified")
 
-    valid_region_levels = ["C", "PR", "CMA", "CD", "CSD", "CT", "DA", "EA", "DB"]
+    # "CMA", "CA" and "CMACA" all name the same level, which holds both census
+    # metropolitan areas and census agglomerations (as in R cancensus 0.6.2)
+    valid_region_levels = [
+        "C",
+        "PR",
+        "CMA",
+        "CA",
+        "CMACA",
+        "CD",
+        "CSD",
+        "CT",
+        "DA",
+        "EA",
+        "DB",
+    ]
 
     processed = {}
     for level, ids in regions.items():

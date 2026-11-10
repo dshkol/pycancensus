@@ -96,8 +96,9 @@ try:
     data = pc.get_census(
         dataset="CA21",
         regions={"CMA": "59933"},  # Vancouver CMA
-        vectors=["v_CA21_1", "v_CA21_2"],  # Population vectors
-        level="CSD"  # Census Subdivision level
+        vectors=["v_CA21_1", "v_CA21_2"],  # Population 2021 and 2016
+        level="CSD",  # Census Subdivision level
+        labels="short",  # name vector columns by code, e.g. v_CA21_1
     )
     
     print(f"Retrieved data shape: {data.shape}")
@@ -107,7 +108,7 @@ try:
     # Basic analysis
     if not data.empty and 'v_CA21_1' in data.columns:
         total_pop = data['v_CA21_1'].sum()
-        print(f"\nTotal population in Vancouver CMA: {total_pop:,}")
+        print(f"\nTotal population in Vancouver CMA: {total_pop:,.0f}")
         
 except Exception as e:
     print(f"Error retrieving census data: {e}")
@@ -126,7 +127,8 @@ try:
         regions={"CMA": "59933"},  # Vancouver CMA
         vectors=["v_CA21_1"],  # Population
         level="CSD",
-        geo_format="geopandas"
+        geo_format="geopandas",
+        labels="short",
     )
     
     print(f"GeoDataFrame shape: {geo_data.shape}")

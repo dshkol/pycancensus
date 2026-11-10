@@ -51,6 +51,23 @@ Vector/Variable Operations
    label_vectors
    explore_census_vectors
 
+Statistics Canada Data
+----------------------
+
+Data straight from Statistics Canada, for geographies and tables that
+CensusMapper doesn't cover. ``get_statcan_geo_suite`` and
+``get_statcan_geographic_attributes`` need pyarrow
+(``pip install pycancensus[statcan]``).
+
+.. autosummary::
+   :toctree: generated/
+
+   get_statcan_wds_data
+   get_statcan_wds_metadata
+   get_statcan_geo_suite
+   get_statcan_geographic_attributes
+   get_statcan_geographies
+
 Configuration Management
 ------------------------
 
@@ -63,6 +80,12 @@ Configuration Management
    show_api_key
    set_cache_path
    get_cache_path
+   set_user_agent_prefix
+   get_user_agent
+   set_language
+   get_language
+   set_labels
+   get_labels
 
 Cache Management
 ----------------

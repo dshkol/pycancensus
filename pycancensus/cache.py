@@ -48,6 +48,23 @@ def _session_cache_remove(cache_keys: Optional[List[str]] = None) -> None:
             _session_cache.pop(cache_key, None)
 
 
+# Format version of cached region and vector lists. Bump it when the parsed
+# layout changes, so lists cached by older versions get downloaded again.
+LIST_CACHE_SCHEMA = 2
+_LIST_SCHEMA_ATTR = "pycancensus_list_schema"
+
+
+def stamp_list_schema(df: pd.DataFrame) -> pd.DataFrame:
+    """Mark a region or vector list as parsed with the current layout."""
+    df.attrs[_LIST_SCHEMA_ATTR] = LIST_CACHE_SCHEMA
+    return df
+
+
+def has_current_list_schema(data: Any) -> bool:
+    """Whether a cached region or vector list uses the current layout."""
+    return getattr(data, "attrs", {}).get(_LIST_SCHEMA_ATTR) == LIST_CACHE_SCHEMA
+
+
 def get_cached_data(cache_key: str) -> Optional[Any]:
     """
     Retrieve data from cache if it exists.

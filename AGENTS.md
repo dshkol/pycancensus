@@ -45,6 +45,10 @@ export CANCENSUS_API_KEY="..."  # required for live API calls
 - `vector_viz.py` — ASCII hierarchy trees
 - `regions.py` — region listing/search and region-list helpers
 - `recalls.py` — StatCan recalled-data detection against cache metadata
+- `wds.py`, `geo_suite.py`, `geographies.py`, `statcan_downloads.py` —
+  data straight from Statistics Canada (Web Data Service, GeoSuite and
+  attribute parquet files hosted by MountainMath, boundary files with the
+  Cloudflare-block fallback); ports of the R files of the same names
 - `resilience.py` — ResilientSession: ALL HTTP goes through this
   (retries 5xx/408/429 with backoff, honors Retry-After, pools
   connections, rate-limits)
@@ -67,7 +71,7 @@ export CANCENSUS_API_KEY="..."  # required for live API calls
   feasible.
 - Format with black (pinned `<26`) before committing; CI runs
   `black --check`.
-- CI: every PR runs tests on Python 3.8–3.11, a docs build, and a live
+- CI: every PR runs tests on Python 3.10–3.13, a docs build, and a live
   example validator. The validate job and tutorials hit the real API.
 
 ## Gotchas

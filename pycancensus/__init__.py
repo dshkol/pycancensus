@@ -7,7 +7,7 @@ Census data and geography retrieved using the CensusMapper API.
 Documentation: https://pycancensus.readthedocs.io/
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __author__ = "Dmitry Shkolnik"
 __email__ = "shkolnikd@gmail.com"
 
@@ -34,6 +34,12 @@ from .settings import (
     get_cache_path,
     remove_api_key,
     show_api_key,
+    set_user_agent_prefix,
+    get_user_agent,
+    set_language,
+    get_language,
+    set_labels,
+    get_labels,
 )
 from .geometry import get_census_geometry
 from .cache import list_cache, remove_from_cache, clear_cache
@@ -45,6 +51,9 @@ from .recalls import (
 from .hierarchy import parent_census_vectors, child_census_vectors
 from .vector_viz import visualize_vector_hierarchy
 from .intersect_geometry import get_intersecting_geometries
+from .wds import get_statcan_wds_metadata, get_statcan_wds_data
+from .geo_suite import get_statcan_geo_suite, get_statcan_geographic_attributes
+from .geographies import get_statcan_geographies
 
 __all__ = [
     "get_census",
@@ -59,6 +68,12 @@ __all__ = [
     "get_api_key",
     "remove_api_key",
     "show_api_key",
+    "set_user_agent_prefix",
+    "get_user_agent",
+    "set_language",
+    "get_language",
+    "set_labels",
+    "get_labels",
     "set_cache_path",
     "get_cache_path",
     "get_census_geometry",
@@ -77,4 +92,9 @@ __all__ = [
     "explore_census_regions",
     "explore_census_vectors",
     "get_intersecting_geometries",
+    "get_statcan_wds_metadata",
+    "get_statcan_wds_data",
+    "get_statcan_geo_suite",
+    "get_statcan_geographic_attributes",
+    "get_statcan_geographies",
 ]

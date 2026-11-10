@@ -2,14 +2,123 @@
 
 All notable changes to pycancensus will be documented in this file.
 
-## [Unreleased]
+## [0.3.0] - 2026-11-08
+
+This release synchronizes pycancensus with R cancensus 0.6.2: the client now
+identifies itself to the CensusMapper API, labels are available in French,
+`get_census()` gains R's `labels = "labelled"` mode and named vectors, and all
+CensusMapper datasets can be requested. It also adds R's functions for data
+straight from Statistics Canada: the Web Data Service, the GeoSuite, the
+geographic attribute files and the original boundary files.
+
+### Breaking Changes
+
+- Python 3.8 and 3.9 are no longer supported; pycancensus requires Python
+  3.10 or newer. Both versions are end-of-life. CI tests Python 3.10–3.13.
+- `list_census_regions()` labels census agglomerations `"CA"` instead of
+  `"CMA"`, like R. Code that filters `level == "CMA"` to get both census
+  metropolitan areas and census agglomerations should use
+  `level.isin(["CMA", "CA"])`. `get_census()` accepts `"CMA"`, `"CA"` and
+  `"CMACA"` interchangeably.
+- `get_census()` raises `ValueError` for invalid `labels` values; they were
+  treated like `"detailed"` before.
+- `explore_census_vectors()` defaults to CA21, and both explorer functions
+  open https://censusmapper.ca/api, as the per-dataset links no longer
+  resolve (R cancensus 0.6.2).
+
+### Improvements
+
+- New functions for data straight from Statistics Canada, ports of R
+  cancensus 0.6.2's StatCan functions:
+  - `get_statcan_wds_data()` and `get_statcan_wds_metadata()` query the
+    Statistics Canada Web Data Service for 2021 Census Profile data, including
+    levels CensusMapper doesn't have: federal and provincial electoral
+    districts, designated places, population centres, forward sortation areas
+    and health regions. Data gets the English or French names of the
+    geographies and characteristics, and is cached for the session.
+  - `get_statcan_geo_suite()` reads the tables of the Statistics Canada
+    GeoSuite for 1996 to 2021, and lists them when called without `level`.
+    `get_statcan_geographic_attributes()` reads the geographic attribute files
+    for 1981 to 2021. Statistics Canada blocks programmatic downloads of these
+    files, so like R they come from parquet files hosted at
+    https://data.mountainmath.ca/census/, cached in the pycancensus cache path.
+    Column labels in English or French are in `attrs["column_labels"]`, and the
+    attribution, licence, source and notes in `attrs["metadata"]`. Reading
+    them needs pyarrow, from the new `statcan` extra:
+    `pip install pycancensus[statcan]`.
+  - `get_statcan_geographies()` downloads the original 2021 boundary files.
+    Statistics Canada currently blocks these downloads with a Cloudflare
+    browser verification; when it does, this warns with the link to download
+    the file in a browser and the folder to put it in, and picks it up from
+    there on the next call.
+
+  R's `get_statcan_geography_relationships()` is not ported, as R 0.6.2
+  deprecates it for removal in its next release;
+  `get_statcan_geographic_attributes("2021")` has the same DGUIDs.
+- `get_census()` accepts named vectors as a dict mapping column names to
+  vector codes, e.g. `vectors={"pop": "v_CA21_1"}`, the equivalent of R's
+  `vectors = c(pop = "v_CA21_1")`. Once any vector is named, the other vector
+  columns are named by vector code. With `labels="labelled"` a named column
+  keeps its variable's label, and a standard column with the same name gets a
+  trailing underscore (e.g. `Population_`); other label modes raise an error
+  for such clashes. Naming is applied after the cache read, so it doesn't
+  download again.
+- All CensusMapper datasets can be requested: the 1996 census (`CA1996`),
+  the cross-tabulations (`CA01xSD` to `CA16xSD`) and the taxfiler datasets
+  (`TX2000` to `TX2018`). Dataset IDs match case-insensitively, and census
+  years translate like R (`2021` -> `CA21`). Before, only four-character
+  `CA..` IDs were accepted.
+
+- French labels (port of R cancensus 0.6.2, #229): `get_census()`,
+  `list_census_vectors()`, `parent_census_vectors()`, `child_census_vectors()`,
+  `find_census_vectors()`, `visualize_vector_hierarchy()` and
+  `dataset_attribution()` gain a `language` parameter, `"en"` or `"fr"`. It
+  defaults to the new `set_language()` session setting, the analog of R's
+  `cancensus.language` option, then to the `PYCANCENSUS_LANGUAGE` environment
+  variable, then to `"en"`. Columns are the same in both languages, and in
+  `get_census()` changing the language does not download the data again.
+  Vectors without French labels, currently the tax and cross-tabulation
+  datasets, fall back to English with a warning once per session and dataset.
+  Region names and the `type`, `units` and `aggregation` columns of
+  `list_census_vectors()` stay as they are. `list_census_vectors()` no longer
+  returns the raw `label_fr` and `details_fr` columns, their content is now in
+  `label` and `details` with `language="fr"`.
+- `get_census()` gains `labels="labelled"` (port of R cancensus 0.6.2, #230),
+  which names vector columns by vector like `labels="short"` and stores the
+  label of each column in `result.attrs["column_labels"]`, a dict keyed by
+  column name (pandas has no per-column label attribute like R). The other
+  columns get short names, types and an order that are the same across
+  datasets and with or without `geo_format`, following R: `GeoUID`, `Type`,
+  `Name`, `Area`, `Population`, `Dwellings`, `Households`,
+  `Population_Previous`, `Quality`, the `*_UID` columns and so on. These also
+  get labels in the requested language, with the census year where it
+  applies, e.g. `Population 2021`. `labels="detailed"` and `labels="short"`
+  do not change.
+- The default of `labels` in `get_census()` is planned to change to
+  `"labelled"` in a future version. It now defaults to the new `set_labels()`
+  session setting (the analog of R's `cancensus.labels` option) or the
+  `PYCANCENSUS_LABELS` environment variable, and otherwise still to
+  `"detailed"`. `get_census()` prints a notice once per session if neither
+  `labels` nor a default is set; `quiet=True` suppresses it.
+- `get_census()` caches downloads independently of `labels` and `language`,
+  which get applied after reading the cache, so switching either reuses the
+  cached data. Data cached by earlier versions is downloaded again once.
+- All requests to the CensusMapper API now identify the client through the
+  user agent, in the form `pycancensus/<version> requests/<version>
+  Python/<version>` (port of R cancensus 0.6.2). This lets the API tell
+  pycancensus traffic apart from the R package and other clients.
+- New `set_user_agent_prefix()` lets packages and tools built on pycancensus
+  identify themselves, e.g. `pc.set_user_agent_prefix("mypackage/1.2.3")`;
+  the `PYCANCENSUS_USER_AGENT_PREFIX` environment variable does the same
+  without code changes. `get_user_agent()` returns the full string. Equivalent
+  to R's `options(cancensus.user_agent_prefix = ...)`.
 
 ### Bug Fixes
 
 - Sphinx-Gallery thumbnails now resolve to their example pages, generated
   notebooks no longer shadow the canonical gallery documents, and the
   geographic plotting example imports NumPy before fitting its trend line.
-- `get_census()` cache keys now include geometry resolution and label mode,
+- `get_census()` cache keys now include geometry resolution,
   use canonical request serialization, and carry a schema version so
   incompatible legacy entries are not reused.
 - Public API functions preserve `CensusAPIError` subclasses such as
@@ -18,6 +127,28 @@ All notable changes to pycancensus will be documented in this file.
 - Geography and vector responses must merge through complete, unique geographic
   identifiers. Missing, duplicate, or unmatched identifiers now raise an error
   instead of falling back to row-order alignment.
+- `get_census()` accepts `"CA"` and `"CMACA"` in addition to `"CMA"`, both for
+  `level` and as `regions` keys (R cancensus 0.6.2, #208), so census
+  agglomerations from `list_census_regions()` pass through
+  `as_census_region_list()` to `get_census()`.
+- `list_census_regions()` and `list_census_vectors()` with `use_cache=False`
+  now replace the cached copy, matching `get_census()`; before, a refresh
+  never updated the cache. Lists cached by earlier versions are downloaded
+  again once, which also clears stale copies with garbled names or numeric
+  region IDs.
+- Region names, vector details, data and the recall database are decoded as
+  UTF-8 regardless of the response's charset header, like R; names such as
+  "Montréal" could come out as "MontrÃ©al".
+- `label_vectors()` works on GeoDataFrame results of `get_census()` with
+  vectors; merging geometry and data dropped the vector metadata (R cancensus
+  0.6.2).
+- `find_census_vectors()` keyword and semantic search no longer drop accented
+  letters such as "é" from the query (R cancensus 0.6.2).
+- `find_census_vectors(query_type="keyword", interactive=True)` no longer
+  fails with `EOFError` outside a terminal; it returns the top matches and
+  reports how many less precise matches were left out (R cancensus 0.6.2).
+- `get_census(quiet=True)` no longer prints the "Downloading ..." progress
+  line for larger requests.
 
 ## [0.2.0] - 2026-06-12
 

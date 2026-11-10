@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pycancensus"
-version = "0.2.0"
+version = "0.3.0"
 description = "Access, retrieve, and work with Canadian Census data and geography"
 readme = "README.md"
 license = {text = "MIT"}
@@ -17,15 +17,14 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: GIS",
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 dependencies = [
     "requests>=2.25.0",
     "pandas>=1.0.0",
@@ -33,6 +32,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+statcan = [
+    "pyarrow>=14",
+]
 dev = [
     "pytest>=6.0",
     "pytest-cov",
@@ -79,7 +81,7 @@ pycancensus = ["*.json", "*.yaml"]
 
 [tool.black]
 line-length = 88
-target-version = ['py37']
+target-version = ['py310']
 extend-exclude = '''
 /(
     tests/cross_validation

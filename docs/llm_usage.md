@@ -2,7 +2,7 @@
 
 This page is written for language models and coding agents using pycancensus
 on behalf of a user. It states the current API precisely, including things
-that changed in 0.2.0 and may differ from your training data.
+that changed in 0.2.0 and 0.3.0 and may differ from your training data.
 
 ```{note}
 A machine-readable index of this documentation is available at
@@ -36,7 +36,8 @@ Census analysis with this package is a three-step funnel: discover
 variables ("vectors"), select regions, then fetch data.
 
 ```python
-# 1. Discover vectors. Datasets: CA21, CA16, CA11, CA06, CA01, CA1996.
+# 1. Discover vectors. Datasets: CA21, CA16, CA11, CA06, CA01, CA1996;
+#    cross-tabs CA01xSD..CA16xSD; taxfiler TX2000..TX2018 (or a year like 2021).
 vectors = pc.search_census_vectors("median income", "CA21", quiet=True)
 # or fuzzy/semantic search (tolerates misspellings):
 vectors = pc.find_census_vectors("median income", "CA21", query_type="semantic")
@@ -66,14 +67,16 @@ Key facts:
 
 - `regions` is a dict mapping a geographic level to ID(s):
   `{"PR": "59"}`, `{"CMA": "59933"}`, `{"CSD": ["5915022", "5915025"]}`.
-- `level` values: `"Regions"` (as queried), `"PR"`, `"CMA"`, `"CD"`,
-  `"CSD"`, `"CT"`, `"DA"`, `"EA"` (1996 only), `"DB"` (2001+), `"C"`
-  (Canada-wide).
+- `level` values: `"Regions"` (as queried), `"PR"`, `"CMA"` (or `"CA"` /
+  `"CMACA"`, all the same level of CMAs and CAs), `"CD"`, `"CSD"`, `"CT"`,
+  `"DA"`, `"EA"` (1996 only), `"DB"` (2001+), `"C"` (Canada-wide).
+- `list_census_regions()` labels census agglomerations `level == "CA"`;
+  filter with `level.isin(["CMA", "CA"])` to get both.
 - Vector IDs look like `v_CA21_906` (dataset embedded in the ID).
 - Census NA codes (`x`, `F`, `...`, `-`) are converted to NaN automatically.
 - Pass `quiet=True` everywhere when running non-interactively.
 
-## API differences from your training data (0.2.0, June 2026)
+## API differences from your training data (0.3.0, November 2026)
 
 If you learned pycancensus ≤0.1.0 or infer from R cancensus, note:
 
@@ -92,6 +95,16 @@ If you learned pycancensus ≤0.1.0 or infer from R cancensus, note:
   `remove_recalled_cached_data()`.
 - `use_cache=False` re-downloads AND refreshes the cache (it is not just
   a bypass).
+- New in 0.3.0: `language=` (`"en"`/`"fr"`) and `set_language()`;
+  `labels="labelled"` and `set_labels()`; named vectors
+  `vectors={"pop": "v_CA21_1"}`; `set_user_agent_prefix()` /
+  `get_user_agent()`; Python >= 3.10; StatCan functions
+  `get_statcan_wds_data()` / `get_statcan_wds_metadata()` (2021 profile
+  data by DGUID, incl. federal ridings, FSAs, health regions),
+  `get_statcan_geo_suite()`, `get_statcan_geographic_attributes()` (need
+  `pip install pycancensus[statcan]`) and `get_statcan_geographies()`.
+- Invalid `labels` values raise `ValueError`. Pass `labels=` explicitly (or
+  call `set_labels()`): the default is planned to change to `"labelled"`.
 
 ## Differences from R cancensus
 
@@ -101,6 +114,11 @@ If you learned pycancensus ≤0.1.0 or infer from R cancensus, note:
 | `geo_format = "sf"` | `geo_format = "geopandas"` |
 | `set_cancensus_api_key()` | `set_api_key()` |
 | `list_cancensus_cache()` | `list_cache()` |
+| `options(cancensus.user_agent_prefix = ...)` | `set_user_agent_prefix(...)` |
+| `vectors = c(pop = "v_CA21_1")` | `vectors={"pop": "v_CA21_1"}` |
+| `options(cancensus.language = "fr")` | `set_language("fr")` |
+| `options(cancensus.labels = "labelled")` | `set_labels("labelled")` |
+| `attr(x$col, "label")` | `x.attrs["column_labels"]["col"]` |
 | returns tibble / sf | returns DataFrame / GeoDataFrame |
 
 Function names otherwise match R (`get_census`, `list_census_vectors`,
@@ -115,7 +133,12 @@ results.
 - Region IDs and UID columns are strings — `"59933"`, never `59933`.
 - Vector columns in results are named `"v_CA21_1: Total ..."` by default;
   pass `labels="short"` for bare vector IDs and use `pc.label_vectors(df)`
-  to recover the descriptions.
+  to recover the descriptions, or `labels="labelled"` for bare vector IDs,
+  short consistent names for the other columns (`Name`, `Area`,
+  `Population`, ...) and labels in `df.attrs["column_labels"]`. Pass
+  `labels` explicitly: its default is planned to change to `"labelled"`.
+- `language="fr"` gives French variable labels; it does not translate
+  region names.
 - Comparing census years means different vector IDs per dataset
   (`v_CA21_1` vs `v_CA16_401` are both population).
 - StatCan occasionally recalls data; if a warning about recalled data

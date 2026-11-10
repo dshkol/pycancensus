@@ -6,6 +6,7 @@ import geopandas as gpd
 from typing import Dict, List, Optional, Union
 
 from .core import get_census
+from .settings import get_labels
 
 
 def get_census_geometry(
@@ -61,6 +62,9 @@ def get_census_geometry(
         level=level,
         geo_format="geopandas",
         resolution=resolution,
+        # No labels parameter here, so follow the session default without
+        # the notice about the planned change of get_census()'s default
+        labels=get_labels() or "detailed",
         use_cache=use_cache,
         quiet=quiet,
         api_key=api_key,
